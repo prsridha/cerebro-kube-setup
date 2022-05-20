@@ -286,7 +286,9 @@ class CerebroInstaller:
             "kubectl create -n {} secret generic kube-config --from-file={}".format(
                 self.kube_namespace, os.path.expanduser("~/.kube/config")),
             "kubectl config set-context --current --namespace={}".format(
-                self.kube_namespace)
+                self.kube_namespace),
+            "kubectl create -n {} configmap cerebro-properties".format(self.kube_namespace),
+            "kubectl create -n {} configmap hyperparameter-properties".format(self.kube_namespace)
         ]
 
         for cmd in cmds:
@@ -343,11 +345,6 @@ class CerebroInstaller:
             "kubectl exec -t {} -- /bin/bash run_jupyter.sh".format(controller))
 
         self.port_forward_jupyter()
-
-        # "kubectl create -n {} configmap cerebro-properties --from-file={}/properties/cerebro-properties.json".format(
-        #     self.kube_namespace, self.root_path),
-        # "kubectl create -n {} configmap hyperparameter-properties --from-file={}/properties/hyperparameter-properties.json".format(
-        #     self.kube_namespace, self.root_path)
 
         print("Done")
 
