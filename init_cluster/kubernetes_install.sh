@@ -40,11 +40,6 @@ sudo echo -e "$ip4\tk8smaster" >> /etc/hosts
 ## init cluster
 kubeadm init --config=kubeadm-config.yaml --upload-certs | tee kubeadm-init.out
 
-## untaint control-plane
-sleep 5
-kubectl taint nodes $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
-kubectl taint nodes $(hostname) node-role.kubernetes.io/master:NoSchedule-
-
 ## copy kube config to /user and root and set permissions
 # $1 is the username
 mkdir -p /users/$1/.kube
@@ -80,3 +75,7 @@ sudo apt -y install python3-pip
 pip install kubernetes
 sudo apt-get install apt-transport-https --yes
 sudo apt-get install dtach
+
+## untaint control-plane
+kubectl taint nodes $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
+kubectl taint nodes $(hostname) node-role.kubernetes.io/master:NoSchedule-
