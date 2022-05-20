@@ -3,6 +3,7 @@ import site
 import time
 import yaml
 import subprocess
+from pathlib import Path
 from importlib import reload
 from argparse import ArgumentParser
 
@@ -239,7 +240,6 @@ class CerebroInstaller:
             yaml.safe_dump(values_yaml, yamlfile)
 
     def install_metrics_monitor(self):
-        import_or_install("kubernetes")
         from kubernetes import client, config
 
         config.load_kube_config()
@@ -271,7 +271,8 @@ class CerebroInstaller:
             "Access Grafana with this link:\nhttp://<Cloudlab Host Name>: {}".format(port))
         print("username: {}\npassword: {}".format("admin", "prom-operator"))
 
-        with open("~/metrics_monitor_credentials.txt", "w") as f:
+        home = str(Path.home())
+        with open(home + "/metrics_monitor_credentials.txt", "w+") as f:
             f.write(
                 "Access Grafana with this link:\nhttp://<Cloudlab Host Name>: {}\n".format(port))
             f.write("username: {}\npassword: {}".format(
