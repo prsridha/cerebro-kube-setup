@@ -108,25 +108,24 @@ class CerebroInstaller:
         import_or_install("fabric2")
         import_or_install("dask[complete]")
         subprocess.call(
-            ["bash", "{}/init_cluster/path.sh".format(self.root_path)])
+            ["bash", "{}/misc/path.sh".format(self.root_path)])
 
         self.init_fabric()
 
         # create /mnt and run save space using the cloudlab command
-        self.conn.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
-        self.s.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
-        input("save space 1 done! Hit Enter to continue")
+        # self.conn.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
+        # self.s.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
+        # input("save space 1 done! Hit Enter to continue")
 
         self.s.run("rm -rf /users/{}/cerebro-kube-setup".format(self.username))
         self.s.run(
             "git clone https://github.com/prsridha/cerebro-kube-setup.git")
 
         self.conn.sudo(
-            "sudo /bin/bash {}/init_cluster/save_space.sh".format(self.root_path))
+            "sudo /bin/bash {}/misc/save_space.sh".format(self.root_path))
         self.s.sudo(
-            "sudo /bin/bash {}/init_cluster/save_space.sh".format(self.root_path))
+            "sudo /bin/bash {}/misc/save_space.sh".format(self.root_path))
         input("save space 2 done! Hit Enter to continue")
-
 
     def kubernetes_install(self):
         self.conn.sudo(
