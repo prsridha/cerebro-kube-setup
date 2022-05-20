@@ -1,0 +1,50 @@
+# Controller Persistent Volume Claim
+
+# Checkpoint pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cerebro-checkpoint-pvc
+  namespace: {{ .Release.Namespace }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: {{ .Values.controller.checkpointCapacity }}
+  selector: 
+    matchLabels:
+      name: cerebro-checkpoint-pv
+---
+# Config pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cerebro-config-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: {{ .Values.controller.configCapacity }}
+  selector: 
+    matchLabels:
+      name: cerebro-config-pv
+---
+# Data pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cerebro-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: {{ .Values.controller.dataCapacity }}
+  selector: 
+    matchLabels:
+      name: cerebro-data-pv

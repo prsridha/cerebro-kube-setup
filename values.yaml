@@ -1,0 +1,29 @@
+controller:
+  checkpointCapacity: 5Gi
+  checkpointHostPath: /cerebro-checkpoint
+  checkpointMountPath: /data/cerebro_checkpoint_storage
+  configCapacity: 100Mi
+  configHostPath: /cerebro-config
+  configMountPath: /data/cerebro_config_storage
+  containerPort: 8786
+  dataCapacity: 50Gi
+  dataHostPath: /cerebro-data
+  dataMountPath: /data/cerebro_data_storage
+  hyperparameterMountPath: /data/hyperparameter_properties
+  image: prsridha/cerebro-controller:latest
+  port: 8786
+  propertiesMountPath: /data/cerebro_properties
+namespace: cerebro
+nfs:
+  capacity: 50Gi
+  ip: 10.109.69.143
+worker:
+  checkpointMountPath: /data/cerebro_checkpoint_storage
+  dataCapacity: 10Gi
+  dataMountPath: /data/cerebro_data_storage_worker
+  hyperparameterMountPath: /data/hyperparameter_properties
+  port: 8787
+  workerContainerPort: 8787
+  workerImage: prsridha/cerebro-worker:latest
+  controllerDataHostPath: /cerebro-data
+  controllerDataMountPath: /data/cerebro_data_storage

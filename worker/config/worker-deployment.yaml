@@ -1,0 +1,59 @@
+# Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cerebro-worker-{{ .Values.workerID }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: cerebro-worker-{{ .Values.workerID }}
+      type: cerebro-worker
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: cerebro-worker-{{.Values.workerID}}
+        type: cerebro-worker
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cerebro/nodename
+                operator: In
+                values:
+                - node{{ add .Values.workerID 1}}
+      containers:
+      - name: cerebro-worker-{{ .Values.workerID }}-container
+        image: {{ .Values.worker.workerImage }}
+        imagePullPolicy: Always
+        env:
+        - name: WORKER_ID_SELF
+          value: "{{ .Values.workerID }}"
+        volumeMounts:
+        - name: cerebro-hyperparamter-storage
+          mountPath: {{ .Values.worker.hyperparameterMountPath }}
+        - name: cerebro-data-storage-worker
+          mountPath: {{ .Values.worker.dataMountPath }}
+        - name: cerebro-checkpoint-storage
+          mountPath: {{ .Values.worker.checkpointMountPath }}
+        - name: cerebro-controller-storage
+          mountPath: {{ .Values.worker.controllerDataMountPath }}
+        ports:
+        - containerPort: {{ .Values.worker.workerContainerPort }}
+      volumes:
+      - name: cerebro-hyperparamter-storage
+        configMap:
+          name: hyperparameter-properties
+      - name: cerebro-data-storage-worker
+        hostPath:
+          path: /mnt/cerebro_data_storage_worker
+          type: DirectoryOrCreate
+      - name: cerebro-checkpoint-storage
+        persistentVolumeClaim:
+          claimName: cerebro-checkpoint-pvc
+      - name: cerebro-controller-storage
+        persistentVolumeClaim:
+          claimName: cerebro-data-pvc

@@ -1,0 +1,14 @@
+# Controller Service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: cerebro-controller-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: cerebro-controller
+  ports:
+  - protocol: "TCP"
+    port: {{ .Values.controller.port }}
+    targetPort: {{ .Values.controller.containerPort }}
+  type: LoadBalancer

@@ -1,0 +1,14 @@
+# Worker Service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: cerebro-service-worker-{{ .Values.workerID }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: cerebro-worker-{{ .Values.workerID }}
+  ports:
+  - protocol: "TCP"
+    port: {{ .Values.worker.port }}
+    targetPort: {{ .Values.worker.workerContainerPort }}
+  type: LoadBalancer

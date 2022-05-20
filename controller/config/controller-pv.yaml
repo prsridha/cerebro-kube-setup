@@ -1,0 +1,55 @@
+# Controller Persistent Volume
+
+# Checkpoint Volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cerebro-checkpoint-pv
+  labels:
+    name: cerebro-checkpoint-pv
+spec:
+  capacity:
+    storage: {{ .Values.controller.checkpointCapacity }}
+  accessModes:
+    - ReadWriteMany
+    - ReadWriteOnce
+  nfs:
+    server: {{ .Values.nfs.ip }}
+    path: {{ .Values.controller.checkpointHostPath }}
+  persistentVolumeReclaimPolicy: Recycle
+---
+# Config Volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cerebro-config-pv
+  labels:
+    name: cerebro-config-pv
+spec:
+  capacity:
+    storage: {{ .Values.controller.configCapacity }}
+  accessModes:
+    - ReadWriteOnce
+    - ReadWriteMany
+  nfs:
+    server: {{ .Values.nfs.ip }}
+    path: {{ .Values.controller.configHostPath }}
+  persistentVolumeReclaimPolicy: Recycle
+---
+# Data Volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cerebro-data-pv
+  labels:
+    name: cerebro-data-pv
+spec:
+  capacity:
+    storage: {{ .Values.controller.dataCapacity }}
+  accessModes:
+    - ReadWriteOnce
+    - ReadWriteMany
+  nfs:
+    server: {{ .Values.nfs.ip }}
+    path: {{ .Values.controller.dataHostPath }}
+  persistentVolumeReclaimPolicy: Recycle

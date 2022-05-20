@@ -1,0 +1,72 @@
+# Controller Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cerebro-controller
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: cerebro-controller
+      type: cerebro-controller
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: cerebro-controller
+        type: cerebro-controller
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cerebro/nodename
+                operator: In
+                values:
+                - node0
+      containers:
+      - name: cerebro-controller-container
+        image: {{ .Values.controller.image }}
+        imagePullPolicy: Always
+        # resources:
+        #   requests:
+        #     memory: "64Mi"
+        #     cpu: "250m"
+        #   limits:
+        #     memory: "128Mi"
+        #     cpu: "500m"
+        volumeMounts:
+        - name: kube-config
+          mountPath: /root/.kube
+        - name: cerebro-hyperparameter-storage
+          mountPath: {{ .Values.controller.hyperparameterMountPath }}
+        - name: cerebro-checkpoint-storage
+          mountPath: {{ .Values.controller.checkpointMountPath }}
+        - name: cerebro-config-storage
+          mountPath: {{ .Values.controller.configMountPath }}
+        - name: cerebro-data-storage
+          mountPath: {{ .Values.controller.dataMountPath }}
+        - name: cerebro-properties-storage
+          mountPath: {{ .Values.controller.propertiesMountPath }}
+        ports:
+        - containerPort: {{ .Values.controller.containerPort }}
+      volumes:
+      - name: cerebro-checkpoint-storage
+        persistentVolumeClaim:
+          claimName: cerebro-checkpoint-pvc
+      - name: cerebro-config-storage
+        persistentVolumeClaim:
+          claimName: cerebro-config-pvc
+      - name: cerebro-data-storage
+        persistentVolumeClaim:
+          claimName: cerebro-data-pvc
+      - name: cerebro-properties-storage
+        configMap:
+          name: cerebro-properties
+      - name: cerebro-hyperparameter-storage
+        configMap:
+          name: hyperparameter-properties
+      - name: kube-config
+        secret:
+          secretName: kube-config
