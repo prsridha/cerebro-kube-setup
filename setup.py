@@ -127,28 +127,30 @@ class CerebroInstaller:
 
     def kubernetes_install(self):
         self.conn.sudo(
-            "bash {}/init_cluster/kubernetes_install.sh".format(self.root_path))
+            "bash {}/init_cluster/kubernetes_install.sh {}".format(self.root_path, self.username))
 
     def kubernetes_join_workers(self):
         join = self.conn.sudo("sudo kubeadm token create --print-join-command")
         node0_ip = "10.10.1.1"
 
         self.s.sudo(
-            "bash {}/install/init_cluster/kubernetes_join.sh {}".format(self.root_path, node0_ip))
+            "bash {}/init_cluster/kubernetes_join.sh {}".format(self.root_path, node0_ip))
 
         self.s.sudo(join.stdout)
 
-        # add new label to nodes
         from kubernetes import client, config
 
         config.load_kube_config()
         v1 = client.CoreV1Api()
-
-        ready = "NotReady" in [i.status in v1.list_node().items]
-        while not ready:
-            ready = "NotReady" in [i.status in v1.list_node().items]
+        
+        # check if nodes are ready
+        notReady = "NotReady" in [i.status for i in v1.list_node().items]
+        while notReady:
+            print("Waiting for newly joined nodes to be ready...")
+            notReady = "NotReady" in [i.status for i in v1.list_node().items]
             time.sleep(1)
 
+        # add new label to nodes
         node_list = v1.list_node()
         for n in node_list.items:
             body = n
@@ -283,11 +285,7 @@ class CerebroInstaller:
             "kubectl create -n {} secret generic kube-config --from-file={}".format(
                 self.kube_namespace, os.path.expanduser("~/.kube/config")),
             "kubectl config set-context --current --namespace={}".format(
-                self.kube_namespace),
-            # "kubectl create -n {} configmap cerebro-properties --from-file={}/properties/cerebro-properties.json".format(
-            #     self.kube_namespace, self.root_path),
-            # "kubectl create -n {} configmap hyperparameter-properties --from-file={}/properties/hyperparameter-properties.json".format(
-            #     self.kube_namespace, self.root_path),
+                self.kube_namespace)
         ]
 
         for cmd in cmds:
@@ -344,6 +342,12 @@ class CerebroInstaller:
             "kubectl exec -t {} -- /bin/bash run_jupyter.sh".format(controller))
 
         self.port_forward_jupyter()
+
+        # "kubectl create -n {} configmap cerebro-properties --from-file={}/properties/cerebro-properties.json".format(
+        #     self.kube_namespace, self.root_path),
+        # "kubectl create -n {} configmap hyperparameter-properties --from-file={}/properties/hyperparameter-properties.json".format(
+        #     self.kube_namespace, self.root_path)
+
         print("Done")
 
     def install_worker(self):
@@ -547,13 +551,11 @@ def main():
         installer.init()
     else:
         installer.init_fabric()
-        if args.cmd == "preinstall":
-            installer.kubernetes_preinstall()
-        elif args.cmd == "install":
+        if args.cmd == "installkube":
             installer.kubernetes_install()
-        elif args.cmd == "joinworkers":
+            time.sleep(5)
             installer.kubernetes_join_workers()
-        elif args.cmd == "initcerebrokube":
+            time.sleep(5)
             installer.init_cerebro_kube()
         elif args.cmd == "installcontroller":
             installer.install_controller()
