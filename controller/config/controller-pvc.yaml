@@ -1,11 +1,27 @@
 # Controller Persistent Volume Claim
 
+# Home pvc
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cerebro-home-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: manual
+  resources:
+    requests:
+      storage: {{ .Values.controller.homeCapacity }}
+  selector: 
+    matchLabels:
+      name: cerebro-home-pv
+---
 # Checkpoint pvc
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: cerebro-checkpoint-pvc
-  namespace: {{ .Release.Namespace }}
 spec:
   accessModes:
     - ReadWriteMany

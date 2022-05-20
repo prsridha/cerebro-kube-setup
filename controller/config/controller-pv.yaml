@@ -1,5 +1,21 @@
 # Controller Persistent Volume
 
+# Home Volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cerebro-home-pv
+  labels:
+    name: cerebro-home-pv
+spec:
+  storageClassName: manual
+  capacity:
+    storage: {{ .Values.controller.homeCapacity }}
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: {{ .Values.controller.homeHostPath }}
+---
 # Checkpoint Volume
 apiVersion: v1
 kind: PersistentVolume

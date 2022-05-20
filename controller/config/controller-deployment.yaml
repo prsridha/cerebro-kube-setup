@@ -39,6 +39,8 @@ spec:
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
+        - name: home
+          mountPath: {{ .Values.controller.homeMountPath }}
         - name: cerebro-hyperparameter-storage
           mountPath: {{ .Values.controller.hyperparameterMountPath }}
         - name: cerebro-checkpoint-storage
@@ -52,6 +54,9 @@ spec:
         ports:
         - containerPort: {{ .Values.controller.containerPort }}
       volumes:
+      - name: home
+        persistentVolumeClaim:
+          claimName: cerebro-home-pvc
       - name: cerebro-checkpoint-storage
         persistentVolumeClaim:
           claimName: cerebro-checkpoint-pvc
