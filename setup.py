@@ -108,7 +108,7 @@ class CerebroInstaller:
         import_or_install("fabric2")
         import_or_install("dask[complete]")
         subprocess.call(
-            ["bash", "{}/install/init_cluster/path.sh".format(self.root_path)])
+            ["bash", "{}/init_cluster/path.sh".format(self.root_path)])
 
         self.init_fabric()
 
@@ -117,57 +117,42 @@ class CerebroInstaller:
         self.s.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
         input("save space 1 done! Hit Enter to continue")
 
+        self.s.run("rm -rf /users/{}/cerebro-kube-setup".format(self.username))
+        self.s.run(
+            "git clone https://github.com/prsridha/cerebro-kube-setup.git")
+
         self.conn.sudo(
-            "sudo /bin/bash {}/install/save_space.sh".format(self.root_path))
+            "sudo /bin/bash {}/init_cluster/save_space.sh".format(self.root_path))
         self.s.sudo(
-            "sudo /bin/bash {}/install/save_space.sh".format(self.root_path))
+            "sudo /bin/bash {}/init_cluster/save_space.sh".format(self.root_path))
         input("save space 2 done! Hit Enter to continue")
 
-        self.s.run("whoami")
-        self.s.run("rm -rf /users/{}/etl-wip".format(self.username))
-        self.s.run(
-            "git clone https://github.com/prsridha/etl-wip.git -b kubernetes")
-
-    def kubernetes_preinstall(self):
-        # print("Note: this will reboot your machine!")
-        time.sleep(5)
-        self.conn.sudo(
-            "bash {}/install/init_cluster/kubernetes_pre.sh".format(self.root_path))
 
     def kubernetes_install(self):
         self.conn.sudo(
-            "bash {}/install/init_cluster/kubernetes_install.sh".format(self.root_path))
-        self.conn.sudo(
-            "bash {}/install/init_cluster/kubernetes_post.sh {}".format(self.root_path, self.username))
-
-        # change permissios of kube config. Not working through sh script.
-        uid = self.conn.run("id -u").stdout.rstrip()
-        gid = self.conn.run("id -g").stdout.rstrip()
-        self.conn.sudo(
-            "sudo chown {}:{} /users/{}/.kube/config".format(uid, gid, self.username))
-        self.conn.sudo(
-            "sudo chown {}:{} /users/{}/.kube/".format(uid, gid, self.username))
+            "bash {}/init_cluster/kubernetes_install.sh".format(self.root_path))
 
     def kubernetes_join_workers(self):
         join = self.conn.sudo("sudo kubeadm token create --print-join-command")
         node0_ip = "10.10.1.1"
-        with open("/etc/hosts", "r") as f:
-            for i in f.read().split("\n"):
-                if "node0" in i:
-                    node0_ip = i.split("\t")[0]
+
         self.s.sudo(
             "bash {}/install/init_cluster/kubernetes_join.sh {}".format(self.root_path, node0_ip))
 
         self.s.sudo(join.stdout)
-        time.sleep(5)
 
         # add new label to nodes
         from kubernetes import client, config
 
         config.load_kube_config()
         v1 = client.CoreV1Api()
-        node_list = v1.list_node()
 
+        ready = "NotReady" in [i.status in v1.list_node().items]
+        while not ready:
+            ready = "NotReady" in [i.status in v1.list_node().items]
+            time.sleep(1)
+
+        node_list = v1.list_node()
         for n in node_list.items:
             body = n
             name = body.metadata.labels["kubernetes.io/hostname"].split(".")[0]
@@ -183,14 +168,14 @@ class CerebroInstaller:
 
         cmds = []
 
-        cmds.append("helm create {}/nfs-config".format(self.root_path))
-        cmds.append("rm -rf {}/nfs-config/templates/*".format(self.root_path))
+        cmds.append("helm create ~/nfs-config")
+        cmds.append("rm -rf ~/nfs-config/templates/*")
         cmds.append(
-            "cp {}/install/nfs-config/* {}/nfs-config/templates/".format(self.root_path, self.root_path))
+            "cp {}/nfs-config/* ~/nfs-config/templates/".format(self.root_path))
         cmds.append(
-            "cp {}/install/values.yaml {}/nfs-config/values.yaml".format(self.root_path, self.root_path))
-        cmds.append("helm install --namespace={} nfs-config {}/nfs-config/".format(
-            self.kube_namespace, self.root_path))
+            "cp {}/values.yaml ~/nfs-config/values.yaml".format(self.root_path))
+        cmds.append("helm install --namespace={} nfs-config ~/nfs-config/".format(
+            self.kube_namespace))
 
         for cmd in cmds:
             time.sleep(1)
@@ -218,7 +203,7 @@ class CerebroInstaller:
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
             nfs_podname, self.kube_namespace, self.cerebro_data_hostpath))
 
-        with open("{}/install/nfs-config/export.txt".format(self.root_path), "w") as f:
+        with open("{}/nfs-config/export.txt".format(self.root_path), "w") as f:
             permissions = "*(rw,insecure,no_root_squash,no_subtree_check)"
             s = "/exports" + "\t" + \
                 "*(rw,insecure,fsid=0,no_root_squash,no_subtree_check)" + "\n"
@@ -234,7 +219,7 @@ class CerebroInstaller:
                 s = path + "\t" + permissions + "\n"
                 f.write(s)
 
-        copy_exports = "kubectl cp -n {} {}/install/nfs-config/export.txt {}:/etc/exports".format(
+        copy_exports = "kubectl cp -n {} {}/nfs-config/export.txt {}:/etc/exports".format(
             self.kube_namespace, self.root_path, nfs_podname)
         reset_exportfs = 'kubectl exec {} -n {} -- /bin/bash -c "exportfs -a"'.format(
             nfs_podname, self.kube_namespace)
@@ -248,10 +233,10 @@ class CerebroInstaller:
         service = v1.read_namespaced_service(
             'nfs-server-service', self.kube_namespace)
         nfs_ip = service.spec.cluster_ip
-        with open('{}/install/values.yaml'.format(self.root_path), 'r') as yamlfile:
+        with open('{}/values.yaml'.format(self.root_path), 'r') as yamlfile:
             values_yaml = yaml.safe_load(yamlfile)
         values_yaml["nfs"]["ip"] = nfs_ip
-        with open('{}/install/values.yaml'.format(self.root_path), 'w') as yamlfile:
+        with open('{}/values.yaml'.format(self.root_path), 'w') as yamlfile:
             yaml.safe_dump(values_yaml, yamlfile)
 
     def install_metrics_monitor(self):
@@ -287,7 +272,7 @@ class CerebroInstaller:
             "Access Grafana with this link:\nhttp://<Cloudlab Host Name>: {}".format(port))
         print("username: {}\npassword: {}".format("admin", "prom-operator"))
 
-        with open("{}/install/metrics_monitor_credentials.txt".format(self.root_path), "w") as f:
+        with open("~/metrics_monitor_credentials.txt", "w") as f:
             f.write(
                 "Access Grafana with this link:\nhttp://<Cloudlab Host Name>: {}\n".format(port))
             f.write("username: {}\npassword: {}".format(
@@ -295,17 +280,17 @@ class CerebroInstaller:
 
     def init_cerebro_kube(self):
         cmds = [
-            "kubectl create -f {}/install/other-configs/rbac_clusterroles.yaml".format(
+            "kubectl create -f {}/other-configs/rbac_clusterroles.yaml".format(
                 self.root_path),
             "kubectl create namespace {}".format(self.kube_namespace),
             "kubectl create -n {} secret generic kube-config --from-file={}".format(
                 self.kube_namespace, os.path.expanduser("~/.kube/config")),
             "kubectl config set-context --current --namespace={}".format(
                 self.kube_namespace),
-            "kubectl create -n {} configmap cerebro-properties --from-file={}/properties/cerebro-properties.json".format(
-                self.kube_namespace, self.root_path),
-            "kubectl create -n {} configmap hyperparameter-properties --from-file={}/properties/hyperparameter-properties.json".format(
-                self.kube_namespace, self.root_path),
+            # "kubectl create -n {} configmap cerebro-properties --from-file={}/properties/cerebro-properties.json".format(
+            #     self.kube_namespace, self.root_path),
+            # "kubectl create -n {} configmap hyperparameter-properties --from-file={}/properties/hyperparameter-properties.json".format(
+            #     self.kube_namespace, self.root_path),
         ]
 
         for cmd in cmds:
@@ -332,21 +317,20 @@ class CerebroInstaller:
         s = "Run this command on your local machine to access Jupyter Notebook : \n{}".format(
             user_pf_command) + "\n" + "http://localhost:{}/?token={}".format(users_port, jupyter_token)
         print(s)
-        with open("{}/install/jupyter_command.txt".format(self.root_path), "w") as f:
+        with open("~/jupyter_command.txt".format(self.root_path), "w") as f:
             f.write(s)
 
     def install_controller(self):
         from kubernetes import client, config
 
         cmds = [
-            "helm create {}/cerebro-controller".format(self.root_path),
-            "rm -rf {}/cerebro-controller/templates/*".format(self.root_path),
-            "cp {}/install/controller/config/* {}/cerebro-controller/templates/".format(
-                self.root_path, self.root_path),
-            "cp {}/install/values.yaml {}/cerebro-controller/values.yaml".format(
-                self.root_path, self.root_path),
-            "helm install --namespace=cerebro controller {}/cerebro-controller/".format(
-                self.root_path)
+            "helm create ~/cerebro-controller",
+            "rm -rf ~/cerebro-controller/templates/*",
+            "cp {}/controller/config/* ~/cerebro-controller/templates/".format(
+                self.root_path),
+            "cp {}/values.yaml {}/cerebro-controller/values.yaml".format(
+                self.root_path),
+            "helm install --namespace=cerebro controller ~/cerebro-controller/"
         ]
 
         for cmd in cmds:
@@ -370,10 +354,10 @@ class CerebroInstaller:
 
         cmds = [
             "helm create {}/cerebro-worker".format(self.root_path),
-            "rm -rf {}/cerebro-worker/templates/*".format(self.root_path),
-            "cp {}/install/worker/config/* {}/cerebro-worker/templates/".format(
+            "rm -rf ~/cerebro-worker/templates/*".format(self.root_path),
+            "cp {}/worker/config/* ~/cerebro-worker/templates/".format(
                 self.root_path, self.root_path),
-            "cp {}/install/values.yaml {}/cerebro-worker/values.yaml".format(
+            "cp {}/values.yaml {}/cerebro-worker/values.yaml".format(
                 self.root_path, self.root_path),
         ]
         c = "helm install --namespace={n} worker{id} {path}/cerebro-worker --set workerID={id}"
@@ -468,19 +452,22 @@ class CerebroInstaller:
             print("Killed Dask in Worker: {}".format(worker_pid))
 
     def copy_module(self):
+        #TODO: not working. Paths need to be fixed
         from kubernetes import client, config
 
         pods = get_pod_names(self.kube_namespace)
+
+        self.conn.run("cd ~ && git clone https://github.com/prsridha/cerebro-kube.git")
 
         self.conn.run(
             "cd {} && zip cerebro.zip cerebro/*".format(self.root_path))
 
         for pod in pods:
             self.conn.run(
-                "kubectl exec -t {} -- rm -rf /etl-wip/cerebro".format(pod))
+                "kubectl exec -t {} -- rm -rf /cerebro-kube".format(pod))
 
         cmds = [
-            "kubectl cp {}/cerebro.zip {}:/etl-wip/",
+            "kubectl cp {}/cerebro.zip {}:/cerebro-kube/",
             "kubectl cp {}/requirements.txt {}:/etl-wip/",
             "kubectl cp {}/setup.py {}:/etl-wip/"
         ]
@@ -511,7 +498,7 @@ class CerebroInstaller:
         connect_kwargs = {"key_filename": pem_path}
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
 
-        conn.sudo("/bin/bash {}/install/utilities.sh".format(self.root_path))
+        conn.sudo("/bin/bash {}/misc/coco_download.sh".format(self.root_path))
 
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
@@ -533,7 +520,7 @@ class CerebroInstaller:
 
     def testing(self):
         self.s.run(
-            "rm -rf etl-wip")
+            "rm -rf cerebro-kube")
 
     def close(self):
         self.s.close()
@@ -541,7 +528,7 @@ class CerebroInstaller:
 
 
 def main():
-    root_path = "/users/{}/etl-wip"
+    root_path = "/users/{}/cerebro-kube-setup"
 
     kube_params = {
         "kube_namespace": "cerebro",
