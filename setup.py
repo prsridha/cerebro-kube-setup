@@ -324,7 +324,7 @@ class CerebroInstaller:
             "rm -rf ~/cerebro-controller/templates/*",
             "cp {}/controller/config/* ~/cerebro-controller/templates/".format(
                 self.root_path),
-            "cp {}/values.yaml {}/cerebro-controller/values.yaml".format(
+            "cp {}/values.yaml ~/cerebro-controller/values.yaml".format(
                 self.root_path),
             "helm install --namespace=cerebro controller ~/cerebro-controller/"
         ]

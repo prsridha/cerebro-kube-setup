@@ -4,8 +4,8 @@ RUN apt-get update
 RUN apt-get install -y curl
 RUN apt-get install -y nano
 
-RUN git clone https://github.com/prsridha/etl-wip.git -b kubernetes
-WORKDIR etl-wip
+RUN git clone https://github.com/prsridha/cerebro-kube.git
+WORKDIR cerebro-kube
 RUN pip install -r requirements.txt
 RUN python3 setup.py install --user
 
