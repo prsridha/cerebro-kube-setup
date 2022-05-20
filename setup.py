@@ -44,7 +44,6 @@ def check_pod_status(label, namespace):
             return False
     return True
 
-
 def get_pod_names(namespace):
     from kubernetes import client, config
 
@@ -61,7 +60,6 @@ def get_pod_names(namespace):
     workers = [i.metadata.name for i in pods_list.items]
 
     return [controller] + workers
-
 
 class CerebroInstaller:
     def __init__(self, root_path, workers, kube_params):
@@ -314,8 +312,10 @@ class CerebroInstaller:
             users_port, kube_port, self.username)
         s = "Run this command on your local machine to access Jupyter Notebook : \n{}".format(
             user_pf_command) + "\n" + "http://localhost:{}/?token={}".format(users_port, jupyter_token)
+        
         print(s)
-        with open("~/jupyter_command.txt".format(self.root_path), "w") as f:
+        home = str(Path.home())
+        with open(home + "/jupyter_command.txt".format(self.root_path), "w+") as f:
             f.write(s)
 
     def install_controller(self):
@@ -352,25 +352,29 @@ class CerebroInstaller:
         from kubernetes import client, config
 
         cmds = [
-            "helm create {}/cerebro-worker".format(self.root_path),
+            "helm create ~/cerebro-worker".format(self.root_path),
             "rm -rf ~/cerebro-worker/templates/*".format(self.root_path),
-            "cp {}/worker/config/* ~/cerebro-worker/templates/".format(
-                self.root_path, self.root_path),
-            "cp {}/values.yaml {}/cerebro-worker/values.yaml".format(
-                self.root_path, self.root_path),
+            "cp {}/worker/config/* ~/cerebro-worker/templates/".format(self.root_path),
+            "cp {}/values.yaml ~/cerebro-worker/values.yaml".format(self.root_path)
         ]
-        c = "helm install --namespace={n} worker{id} {path}/cerebro-worker --set workerID={id}"
+        c = "helm install --namespace={n} worker{id} ~/cerebro-worker --set workerID={id}"
 
         # node0 for nfs + metrics
         # node1 for controller
         # all other nodes for workers
         for i in range(1, self.w - 1):
             cmds.append(
-                c.format(id=i, path=self.root_path, n=self.kube_namespace))
+                c.format(id=i, n=self.kube_namespace))
 
         for cmd in cmds:
             time.sleep(0.5)
             self.conn.run(cmd)
+
+        label = "app=cerebro-worker"
+
+        while not check_pod_status(label, self.kube_namespace):
+            time.sleep(1)
+
 
     def run_dask(self):
         from kubernetes import client, config
@@ -456,23 +460,24 @@ class CerebroInstaller:
 
         pods = get_pod_names(self.kube_namespace)
 
+        self.conn.run("rm -rf ~/cerebro-kube")
         self.conn.run("cd ~ && git clone https://github.com/prsridha/cerebro-kube.git")
 
         self.conn.run(
-            "cd {} && zip cerebro.zip cerebro/*".format(self.root_path))
+            "cd ~/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
 
         for pod in pods:
             self.conn.run(
                 "kubectl exec -t {} -- rm -rf /cerebro-kube".format(pod))
 
         cmds = [
-            "kubectl cp {}/cerebro.zip {}:/cerebro-kube/",
-            "kubectl cp {}/requirements.txt {}:/etl-wip/",
-            "kubectl cp {}/setup.py {}:/etl-wip/"
+            "kubectl cp ~/cerebro-kube/cerebro.zip {}:/cerebro-kube/",
+            "kubectl cp ~/cerebro-kube/requirements.txt {}:/cerebro-kube/",
+            "kubectl cp ~/cerebro-kube/setup.py {}:/cerebro-kube/"
         ]
         for pod in pods:
             for cmd in cmds:
-                self.conn.run(cmd.format(self.root_path, pod))
+                self.conn.run(cmd.format(pod))
 
         for pod in pods:
             self.conn.run(
@@ -483,8 +488,9 @@ class CerebroInstaller:
         self.conn.run("rm {}/cerebro.zip".format(self.root_path))
 
         self.stop_dask()
-        self.run_dask()
         self.stop_jupyter()
+
+        self.run_dask()
         self.start_jupyter()
 
     def download_coco(self):
@@ -545,25 +551,30 @@ def main():
     args = parser.parse_args()
 
     installer = CerebroInstaller(root_path, args.workers, kube_params)
-    if args.cmd == "init":
+    if args.cmd == "installkube":
         installer.init()
+        installer.kubernetes_install()
+        time.sleep(5)
+        installer.kubernetes_join_workers()
+        time.sleep(5)
+        installer.init_cerebro_kube()
     else:
         installer.init_fabric()
-        if args.cmd == "installkube":
-            installer.kubernetes_install()
-            time.sleep(5)
-            installer.kubernetes_join_workers()
-            time.sleep(5)
-            installer.init_cerebro_kube()
+        if args.cmd == "installcerebro":
+            installer.install_controller()
+            time.sleep(1)
+            installer.install_worker()
+            time.sleep(1)
+            installer.run_dask()
+        elif args.cmd == "downloadcoco":
+            installer.download_coco()
+
         elif args.cmd == "installcontroller":
             installer.install_controller()
         elif args.cmd == "installworkers":
             installer.install_worker()
         elif args.cmd == "rundask":
             installer.run_dask()
-        elif args.cmd == "downloadcoco":
-            installer.download_coco()
-
         elif args.cmd == "startjupyter":
             installer.start_jupyter()
         elif args.cmd == "copymodule":

@@ -79,3 +79,4 @@ sudo apt-get -y install jq
 sudo apt -y install python3-pip
 pip install kubernetes
 sudo apt-get install apt-transport-https --yes
+sudo apt-get install dtach
