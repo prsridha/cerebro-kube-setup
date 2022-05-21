@@ -398,7 +398,7 @@ class CerebroInstaller:
             self.conn.run(
                 "kubectl exec -t {} -- pip install --upgrade click==8.0.2".format(pod))
 
-        scheduler_cmd = "kubectl exec -it {} -- dask-scheduler --host=0.0.0.0 &".format(
+        scheduler_cmd = "kubectl exec -t {} -- dask-scheduler --host=0.0.0.0 &".format(
             controller)
         out = self.runbg(scheduler_cmd)
 
@@ -410,7 +410,7 @@ class CerebroInstaller:
         controller_ip = svc.spec.cluster_ip
 
         print(controller_ip)
-        worker_cmd = "kubectl exec -it {} dask-worker tcp://{}:8786 --nprocs {} &"
+        worker_cmd = "kubectl exec -t {} -- dask-worker tcp://{}:8786 --nprocs {} &"
         for worker in workers:
             self.runbg(worker_cmd.format(worker, controller_ip, num_dask_processes))
 
@@ -437,21 +437,27 @@ class CerebroInstaller:
         pods = get_pod_names(self.kube_namespace)
         controller = pods[0]
         workers = pods[1:]
-
-        out = self.conn.run(
-            "kubectl exec -t {} -- ps -ef | grep dask-scheduler".format(controller))
-        scheduler_pid = out.stdout.split()[1]
-        self.conn.run(
-            "kubectl exec -t {} -- kill {} || true".format(controller, scheduler_pid))
-        print("Killed Dask Scheduler: {}".format(scheduler_pid))
+        
+        try: 
+            out = self.conn.run(
+                "kubectl exec -t {} -- ps -ef | grep dask-scheduler".format(controller))
+            scheduler_pid = out.stdout.split()[1]
+            self.conn.run(
+                "kubectl exec -t {} -- kill {} || true".format(controller, scheduler_pid))
+            print("Killed Dask Scheduler: {}".format(scheduler_pid))
+        except Exception as e:
+            print("Couldn't kill dask in controller: ", str(e))
 
         for worker in workers:
-            out = self.conn.run(
-                "kubectl exec -t {} -- ps -ef | grep dask-worker".format(worker))
-            worker_pid = out.stdout.split()[1]
-            self.conn.run(
-                "kubectl exec -t {} -- kill {} || true".format(controller, worker_pid))
-            print("Killed Dask in Worker: {}".format(worker_pid))
+            try:
+                out = self.conn.run(
+                    "kubectl exec -t {} -- ps -ef | grep dask-worker".format(worker))
+                worker_pid = out.stdout.split()[1]
+                self.conn.run(
+                    "kubectl exec -t {} -- kill {} || true".format(controller, worker_pid))
+                print("Killed Dask in Worker: {}".format(worker_pid))
+            except Exception as e:
+                print("Couldn't kill dask in {}: {}".format(worker, str(e)))
 
     def copy_module(self):
         #TODO: not working. Paths need to be fixed
@@ -507,20 +513,18 @@ class CerebroInstaller:
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
 
-        host = "node1"
-
         user = self.username
         pem_path = "/users/{}/cloudlab.pem".format(self.username)
         connect_kwargs = {"key_filename": pem_path}
 
-        for i in range(1, self.w - 1):
+        for i in range(2, self.w):
             host = "node" + str(i)
             conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
             try:
                 conn.sudo("rm -rf /mnt/cerebro_data_storage_worker/*")
                 conn.close()
             except:
-                print("Failed to delete in worker" + str(i))
+                print("Failed to delete in worker" + str(i-1))
 
     def testing(self):
         self.s.run(
