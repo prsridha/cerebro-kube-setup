@@ -388,6 +388,8 @@ class CerebroInstaller:
     def run_dask(self):
         from kubernetes import client, config
 
+        num_dask_processes = 16
+
         pods = get_pod_names(self.kube_namespace)
         controller = pods[0]
         workers = pods[1:]
@@ -408,9 +410,9 @@ class CerebroInstaller:
         controller_ip = svc.spec.cluster_ip
 
         print(controller_ip)
-        worker_cmd = "kubectl exec -it {} dask-worker tcp://{}:8786 &"
+        worker_cmd = "kubectl exec -it {} dask-worker tcp://{}:8786 --nprocs {} &"
         for worker in workers:
-            self.runbg(worker_cmd.format(worker, controller_ip))
+            self.runbg(worker_cmd.format(worker, controller_ip, num_dask_processes))
 
         print("cerebro-controller's IP: ", controller_ip)
 
