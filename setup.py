@@ -427,10 +427,13 @@ class CerebroInstaller:
             "kubectl exec -t {} -- ps -ef | grep jupyter-notebook".format(controller))
         notebook_pid = out.stdout.split()[1]
         print(notebook_pid)
-        self.conn.run(
-            "kubectl exec -t {} -- kill -9 {} || true".format(controller, notebook_pid))
 
-        print("Killed Jupyter Notebook: {}".format(notebook_pid))
+        try:
+            self.conn.run(
+                "kubectl exec -t {} -- kill -9 {} || true".format(controller, notebook_pid))
+            print("Killed Jupyter Notebook: {}".format(notebook_pid))
+        except Exception as e:
+            print("Couldn't kill jupyter in controller: ", str(e))
 
     def stop_dask(self):
         from kubernetes import client, config
@@ -464,17 +467,18 @@ class CerebroInstaller:
         #TODO: not working. Paths need to be fixed
         from kubernetes import client, config
 
-        pods = get_pod_names(self.kube_namespace)
+        # ignore controller as it's replicated to node0
+        pods = get_pod_names(self.kube_namespace)[1:]
 
-        self.conn.run("rm -rf ~/cerebro-kube")
-        self.conn.run("cd ~ && git clone https://github.com/prsridha/cerebro-kube.git")
+        # self.conn.run("rm -rf ~/cerebro-kube")
+        # self.conn.run("cd ~ && git clone https://github.com/prsridha/cerebro-kube.git")
 
         self.conn.run(
             "cd ~/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
 
         for pod in pods:
             self.conn.run(
-                "kubectl exec -t {} -- rm -rf /cerebro-kube".format(pod))
+                "kubectl exec -t {} -- rm -rf /cerebro-kube/cerebro".format(pod))
 
         cmds = [
             "kubectl cp ~/cerebro-kube/cerebro.zip {}:/cerebro-kube/",
@@ -487,11 +491,11 @@ class CerebroInstaller:
 
         for pod in pods:
             self.conn.run(
-                "kubectl exec -t {} -- unzip -o cerebro.zip".format(pod))
+                "kubectl exec -t {} -- unzip -o /cerebro-kube/cerebro.zip".format(pod))
             self.conn.run(
-                "kubectl exec -t {} -- python3 setup.py install --user".format(pod))
+                "kubectl exec -t {} -- python3 /cerebro-kube/setup.py install --user".format(pod))
 
-        self.conn.run("rm {}/cerebro.zip".format(self.root_path))
+        self.conn.run("rm ~/cerebro-kube/cerebro.zip")
 
         self.stop_dask()
         self.stop_jupyter()
