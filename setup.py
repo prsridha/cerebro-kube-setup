@@ -464,7 +464,6 @@ class CerebroInstaller:
                 print("Couldn't kill dask in {}: {}".format(worker, str(e)))
 
     def copy_module(self):
-        #TODO: not working. Paths need to be fixed
         from kubernetes import client, config
 
         # ignore controller as it's replicated to node0
@@ -497,11 +496,18 @@ class CerebroInstaller:
 
         self.conn.run("rm ~/cerebro-kube/cerebro.zip")
 
+        #TODO: need to check dask worker numbers
         self.stop_dask()
+        time.sleep(1)
+        self.stop_dask()
+        time.sleep(1)
         self.stop_jupyter()
+        time.sleep(1)
 
         self.run_dask()
+        time.sleep(1)
         self.start_jupyter()
+        time.sleep(1)
 
     def download_coco(self):
         from fabric2 import ThreadingGroup, Connection
