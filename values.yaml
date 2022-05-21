@@ -13,13 +13,13 @@ controller:
   homeHostPath: /users/prsridha/cerebro-kube
   homeMountPath: /cerebro-kube
   hyperparameterMountPath: /data/hyperparameter_properties
-  image: prsridha/cerebro-controller:latest
+  image: prsridha/cerebro-image:latest
   port: 8786
   propertiesMountPath: /data/cerebro_properties
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.98.157.5
+  ip: 10.103.82.225
 worker:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
@@ -29,4 +29,4 @@ worker:
   hyperparameterMountPath: /data/hyperparameter_properties
   port: 8787
   workerContainerPort: 8787
-  workerImage: prsridha/cerebro-worker:latest
+  workerImage: prsridha/cerebro-image:latest

@@ -297,11 +297,19 @@ class CerebroInstaller:
         # install prometheus + grafana
         self.install_metrics_monitor()
 
-    def port_forward_jupyter(self):
+    def start_jupyter(self):
         users_port = 9999
         kube_port = 23456
 
+        from kubernetes import client, config
+
         controller = get_pod_names(self.kube_namespace)[0]
+
+        self.conn.run("kubectl cp {}/misc/run_jupyter.sh {}:/cerebro-kube/".format(self.root_path, controller))
+
+        self.runbg(
+            "kubectl exec -i {} -- /bin/bash /cerebro-kube/run_jupyter.sh".format(controller))
+
         cmd = "kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller)
         jupyter_token = self.conn.run(cmd).stdout
 
@@ -324,7 +332,7 @@ class CerebroInstaller:
         cmds = [
             "helm create ~/cerebro-controller",
             "rm -rf ~/cerebro-controller/templates/*",
-            "cp {}/controller/config/* ~/cerebro-controller/templates/".format(
+            "cp {}/controller-config/* ~/cerebro-controller/templates/".format(
                 self.root_path),
             "cp {}/values.yaml ~/cerebro-controller/values.yaml".format(
                 self.root_path),
@@ -344,7 +352,7 @@ class CerebroInstaller:
         self.runbg(
             "kubectl exec -t {} -- /bin/bash run_jupyter.sh".format(controller))
 
-        self.port_forward_jupyter()
+        self.start_jupyter()
 
         print("Done")
 
@@ -354,7 +362,7 @@ class CerebroInstaller:
         cmds = [
             "helm create ~/cerebro-worker".format(self.root_path),
             "rm -rf ~/cerebro-worker/templates/*".format(self.root_path),
-            "cp {}/worker/config/* ~/cerebro-worker/templates/".format(self.root_path),
+            "cp {}/worker-config/* ~/cerebro-worker/templates/".format(self.root_path),
             "cp {}/values.yaml ~/cerebro-worker/values.yaml".format(self.root_path)
         ]
         c = "helm install --namespace={n} worker{id} ~/cerebro-worker --set workerID={id}"
@@ -370,7 +378,7 @@ class CerebroInstaller:
             time.sleep(0.5)
             self.conn.run(cmd)
 
-        label = "app=cerebro-worker"
+        label = "type=cerebro-worker"
 
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
@@ -419,18 +427,6 @@ class CerebroInstaller:
             "kubectl exec -t {} -- kill -9 {} || true".format(controller, notebook_pid))
 
         print("Killed Jupyter Notebook: {}".format(notebook_pid))
-
-    def start_jupyter(self):
-        from kubernetes import client, config
-
-        pods = get_pod_names(self.kube_namespace)
-        controller = pods[0]
-
-        self.runbg(
-            "kubectl exec -i {} -- /bin/bash run_jupyter.sh".format(controller))
-        self.port_forward_jupyter()
-        self.conn.run(
-            "kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller))
 
     def stop_dask(self):
         from kubernetes import client, config
@@ -583,8 +579,6 @@ def main():
             installer.stop_dask()
         elif args.cmd == "stopjupyter":
             installer.stop_jupyter()
-        elif args.cmd == "portforward":
-            installer.port_forward_jupyter()
         elif args.cmd == "delworkerdata":
             installer.delete_worker_data()
         elif args.cmd == "testing":
