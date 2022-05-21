@@ -508,7 +508,18 @@ class CerebroInstaller:
         connect_kwargs = {"key_filename": pem_path}
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
 
-        conn.sudo("/bin/bash {}/misc/coco_download.sh".format(self.root_path))
+        cmds = [
+            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/val2014.zip",
+            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
+            "mkdir /mnt/nfs/cerebro-data/coco",
+            "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/annotations_trainval2014.zip",
+            "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/val2014.zip"
+        ]
+
+        for cmd in cmds:
+            conn.sudo(cmd)
+
+        conn.close()
 
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
