@@ -129,6 +129,8 @@ class CerebroInstaller:
             "bash {}/init_cluster/kubernetes_install.sh {}".format(self.root_path, self.username))
 
     def kubernetes_join_workers(self):
+        from kubernetes import client, config
+
         join = self.conn.sudo("sudo kubeadm token create --print-join-command")
         node0_ip = "10.10.1.1"
 
@@ -137,7 +139,6 @@ class CerebroInstaller:
 
         self.s.sudo(join.stdout)
 
-        from kubernetes import client, config
 
         config.load_kube_config()
         v1 = client.CoreV1Api()
