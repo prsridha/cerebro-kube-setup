@@ -308,12 +308,11 @@ class CerebroInstaller:
 
         controller = get_pod_names(self.kube_namespace)[0]
 
-        self.conn.run("kubectl cp {}/misc/run_jupyter.sh {}:/cerebro-kube/".format(self.root_path, controller))
-
+        self.conn.run("kubectl cp {}/misc/run_jupyter.sh {}:/home/cerebro-kube/".format(self.root_path, controller))
         self.runbg(
-            "kubectl exec -i {} -- /bin/bash /cerebro-kube/run_jupyter.sh".format(controller))
+            "kubectl exec -t {} -- /bin/bash run_jupyter.sh".format(controller))
 
-        cmd = "kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller)
+        cmd = "kubectl exec -t {} -- cat JUPYTER_TOKEN".format(controller)
         jupyter_token = self.conn.run(cmd).stdout
 
         cmd = "kubectl port-forward --address 127.0.0.1 {} {}:8888 &".format(
@@ -335,7 +334,7 @@ class CerebroInstaller:
         cmds = [
             "helm create ~/cerebro-controller",
             "rm -rf ~/cerebro-controller/templates/*",
-            "cp {}/controller-config/* ~/cerebro-controller/templates/".format(
+            "cp {}/controller/config/* ~/cerebro-controller/templates/".format(
                 self.root_path),
             "cp {}/values.yaml ~/cerebro-controller/values.yaml".format(
                 self.root_path),
@@ -352,8 +351,17 @@ class CerebroInstaller:
             time.sleep(1)
 
         controller = get_pod_names(self.kube_namespace)[0]
-        self.runbg(
-            "kubectl exec -t {} -- /bin/bash run_jupyter.sh".format(controller))
+        
+        cmds = [
+            "git clone https://github.com/prsridha/cerebro-kube.git /home/cerebro-kube",
+            "pip install -r requirements.txt",
+            "python3 setup.py install --user"
+        ]
+        for cmd in cmds:
+            self.conn.run("kubectl exec -t {} -- {}".format(controller, cmd))
+
+        # grant permission to cerebro-kube folder
+        self.conn.sudo("chmod -R 777 ~/cerebro-kube".format(self.root_path))
 
         self.start_jupyter()
 
@@ -365,7 +373,7 @@ class CerebroInstaller:
         cmds = [
             "helm create ~/cerebro-worker".format(self.root_path),
             "rm -rf ~/cerebro-worker/templates/*".format(self.root_path),
-            "cp {}/worker-config/* ~/cerebro-worker/templates/".format(self.root_path),
+            "cp {}/worker/config/* ~/cerebro-worker/templates/".format(self.root_path),
             "cp {}/values.yaml ~/cerebro-worker/values.yaml".format(self.root_path)
         ]
         c = "helm install --namespace={n} worker{id} ~/cerebro-worker --set workerID={id}"
@@ -396,9 +404,9 @@ class CerebroInstaller:
         controller = pods[0]
         workers = pods[1:]
 
-        for pod in pods:
-            self.conn.run(
-                "kubectl exec -t {} -- pip install --upgrade click==8.0.2".format(pod))
+        # for pod in pods:
+        #     self.conn.run(
+        #         "kubectl exec -t {} -- pip install --upgrade click==8.0.2".format(pod))
 
         scheduler_cmd = "kubectl exec -t {} -- dask-scheduler --host=0.0.0.0 &".format(
             controller)
