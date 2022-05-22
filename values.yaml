@@ -10,8 +10,8 @@ controller:
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
   homeCapacity: 10Gi
-  homeHostPath: /users/prsridha/
-  homeMountPath: /
+  homeHostPath: /users/prsridha/start
+  homeMountPath: /mnt # then docker git clone should go for /mnt/cerebro-kube
   hyperparameterMountPath: /data/hyperparameter_properties
   image: prsridha/cerebro-image:latest
   port: 8786
@@ -19,7 +19,7 @@ controller:
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.111.93.35
+  ip: 10.99.178.78
 worker:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
