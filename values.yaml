@@ -9,9 +9,9 @@ controller:
   dataCapacity: 50Gi
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
-  homeCapacity: 5Gi
-  homeHostPath: /users/prsridha/cerebro-kube
-  homeMountPath: /cerebro-kube
+  homeCapacity: 10Gi
+  homeHostPath: /users/prsridha/
+  homeMountPath: /
   hyperparameterMountPath: /data/hyperparameter_properties
   image: prsridha/cerebro-image:latest
   port: 8786
@@ -19,7 +19,7 @@ controller:
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.103.82.225
+  ip: 10.111.93.35
 worker:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
