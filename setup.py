@@ -414,7 +414,7 @@ class CerebroInstaller:
         print(controller_ip)
         worker_cmd = "kubectl exec -t {} -- dask-worker tcp://{}:8786 --nworkers {} --name {} &"
         for worker in workers:
-            name = "-".join(worker.split("-")[:3])
+            name = worker.split("-")[2]
             self.runbg(worker_cmd.format(worker, controller_ip, num_dask_processes, name))
 
         print("cerebro-controller's IP: ", controller_ip)
@@ -454,6 +454,7 @@ class CerebroInstaller:
         except Exception as e:
             print("Couldn't kill dask in controller: ", str(e))
 
+        #TODO: fix this 
         for worker in workers:
             try:
                 out = self.conn.run(
@@ -475,16 +476,16 @@ class CerebroInstaller:
         # self.conn.run("cd ~ && git clone https://github.com/prsridha/cerebro-kube.git")
 
         self.conn.run(
-            "cd ~/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
+            "cd ~/cerebro-kube/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
 
         for pod in pods:
             self.conn.run(
                 "kubectl exec -t {} -- rm -rf /cerebro-kube/cerebro".format(pod))
 
         cmds = [
-            "kubectl cp ~/cerebro-kube/cerebro.zip {}:/cerebro-kube/",
-            "kubectl cp ~/cerebro-kube/requirements.txt {}:/cerebro-kube/",
-            "kubectl cp ~/cerebro-kube/setup.py {}:/cerebro-kube/"
+            "kubectl cp ~/cerebro-kube/cerebro-kube/cerebro.zip {}:/cerebro-kube/",
+            "kubectl cp ~/cerebro-kube/cerebro-kube/requirements.txt {}:/cerebro-kube/",
+            "kubectl cp ~/cerebro-kube/cerebro-kube/setup.py {}:/cerebro-kube/"
         ]
         for pod in pods:
             for cmd in cmds:
@@ -496,20 +497,15 @@ class CerebroInstaller:
             self.conn.run(
                 "kubectl exec -t {} -- python3 /cerebro-kube/setup.py install --user".format(pod))
 
-        self.conn.run("rm ~/cerebro-kube/cerebro.zip")
+        self.conn.run("rm ~/cerebro-kube/cerebro-kube/cerebro.zip")
 
         #TODO: need to check dask worker numbers
         self.stop_dask()
-        time.sleep(1)
-        self.stop_dask()
-        time.sleep(1)
         self.stop_jupyter()
-        time.sleep(1)
-
-        self.run_dask()
-        time.sleep(1)
-        self.start_jupyter()
-        time.sleep(1)
+        time.sleep(3) 
+        # self.run_dask()
+        # self.start_jupyter()
+        # time.sleep(5)
 
     def download_coco(self):
         from fabric2 import ThreadingGroup, Connection
