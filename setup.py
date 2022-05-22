@@ -129,8 +129,8 @@ class CerebroInstaller:
             "bash {}/init_cluster/kubernetes_install.sh {}".format(self.root_path, self.username))
 
     def kubernetes_join_workers(self):
-        import_or_install("kubernetes")
-
+        reload(site)
+        
         from kubernetes import client, config
 
         join = self.conn.sudo("sudo kubeadm token create --print-join-command")
