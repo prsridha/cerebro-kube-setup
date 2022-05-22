@@ -404,10 +404,6 @@ class CerebroInstaller:
         controller = pods[0]
         workers = pods[1:]
 
-        # for pod in pods:
-        #     self.conn.run(
-        #         "kubectl exec -t {} -- pip install --upgrade click==8.0.2".format(pod))
-
         scheduler_cmd = "kubectl exec -t {} -- dask-scheduler --host=0.0.0.0 &".format(
             controller)
         out = self.runbg(scheduler_cmd)
@@ -426,6 +422,7 @@ class CerebroInstaller:
             self.runbg(worker_cmd.format(worker, controller_ip, num_dask_processes, name))
 
         print("cerebro-controller's IP: ", controller_ip)
+        time.sleep(3)
 
     def stop_jupyter(self):
         from kubernetes import client, config
@@ -434,13 +431,13 @@ class CerebroInstaller:
         controller = pods[0]
 
         out = self.conn.run(
-            "kubectl exec -t {} -- ps -ef | grep jupyter-notebook".format(controller))
-        notebook_pid = out.stdout.split()[1]
+            "kubectl exec -t " + controller + " -- ps aux | grep '[j]upyter' | awk '{print $2}'")
+        notebook_pid = " ".join(out.stdout.split())
         print(notebook_pid)
 
         try:
             self.conn.run(
-                "kubectl exec -t {} -- kill -9 {} || true".format(controller, notebook_pid))
+                "kubectl exec -t {} -- kill -9 {}".format(controller, notebook_pid))
             print("Killed Jupyter Notebook: {}".format(notebook_pid))
         except Exception as e:
             print("Couldn't kill jupyter in controller: ", str(e))
@@ -454,22 +451,23 @@ class CerebroInstaller:
         
         try: 
             out = self.conn.run(
-                "kubectl exec -t {} -- ps -ef | grep dask-scheduler".format(controller))
-            scheduler_pid = out.stdout.split()[1]
+                "kubectl exec -t " + controller + " -- ps aux | grep '[d]ask-scheduler' | awk '{print $2}'")
+            scheduler_pids = " ".join(out.stdout.split())
+            print(scheduler_pids)
             self.conn.run(
-                "kubectl exec -t {} -- kill {} || true".format(controller, scheduler_pid))
-            print("Killed Dask Scheduler: {}".format(scheduler_pid))
+                "kubectl exec -t {} -- kill {}".format(controller, scheduler_pids))
+            print("Killed Dask Scheduler: {}".format(scheduler_pids))
         except Exception as e:
             print("Couldn't kill dask in controller: ", str(e))
 
-        #TODO: fix this 
         for worker in workers:
             try:
                 out = self.conn.run(
-                    "kubectl exec -t {} -- ps -ef | grep dask-worker".format(worker))
-                worker_pid = out.stdout.split()[1]
+                    "kubectl exec -t " + worker + " -- ps aux | grep '[d]ask-worker' | awk '{print $2}'")
+                worker_pid = " ".join(out.stdout.split())
+                print("kill {}".format(worker_pid))
                 self.conn.run(
-                    "kubectl exec -t {} -- kill {} || true".format(controller, worker_pid))
+                    "kubectl exec -t {} -- kill {}".format(worker, worker_pid))
                 print("Killed Dask in Worker: {}".format(worker_pid))
             except Exception as e:
                 print("Couldn't kill dask in {}: {}".format(worker, str(e)))
@@ -480,20 +478,17 @@ class CerebroInstaller:
         # ignore controller as it's replicated to node0
         pods = get_pod_names(self.kube_namespace)[1:]
 
-        # self.conn.run("rm -rf ~/cerebro-kube")
-        # self.conn.run("cd ~ && git clone https://github.com/prsridha/cerebro-kube.git")
-
         self.conn.run(
-            "cd ~/cerebro-kube/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
+            "cd ~/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
 
         for pod in pods:
             self.conn.run(
                 "kubectl exec -t {} -- rm -rf /cerebro-kube/cerebro".format(pod))
 
         cmds = [
-            "kubectl cp ~/cerebro-kube/cerebro-kube/cerebro.zip {}:/cerebro-kube/",
-            "kubectl cp ~/cerebro-kube/cerebro-kube/requirements.txt {}:/cerebro-kube/",
-            "kubectl cp ~/cerebro-kube/cerebro-kube/setup.py {}:/cerebro-kube/"
+            "kubectl cp ~/cerebro-kube/cerebro.zip {}:/cerebro-kube/",
+            "kubectl cp ~/cerebro-kube/requirements.txt {}:/cerebro-kube/",
+            "kubectl cp ~/cerebro-kube/setup.py {}:/cerebro-kube/"
         ]
         for pod in pods:
             for cmd in cmds:
@@ -505,15 +500,16 @@ class CerebroInstaller:
             self.conn.run(
                 "kubectl exec -t {} -- python3 /cerebro-kube/setup.py install --user".format(pod))
 
-        self.conn.run("rm ~/cerebro-kube/cerebro-kube/cerebro.zip")
+        self.conn.run("rm ~/cerebro-kube/cerebro.zip")
+        self.conn.run("cd ~/cerebro-kube && python3 setup.py install --user")
 
         #TODO: need to check dask worker numbers
         self.stop_dask()
         self.stop_jupyter()
         time.sleep(3) 
-        # self.run_dask()
-        # self.start_jupyter()
-        # time.sleep(5)
+        self.run_dask()
+        self.start_jupyter()
+        time.sleep(3)
 
     def download_coco(self):
         from fabric2 import ThreadingGroup, Connection
