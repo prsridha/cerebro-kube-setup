@@ -79,3 +79,10 @@ sudo apt-get install dtach
 ## untaint control-plane
 kubectl taint nodes $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
 kubectl taint nodes $(hostname) node-role.kubernetes.io/master:NoSchedule-
+
+## Debugging python modules
+python3 -m pip uninstall requests-oauthlib
+sudo rm -rf /usr/local/lib/python3.6/dist-packages/requests_oauthlib/
+sudo rm -rf /usr/local/lib/python3.6/dist-packages/requests_oauthlib-1.3.0.dist-info/
+python3 -m pip install --upgrade pip
+python3 -m pip install requests-oauthlib
