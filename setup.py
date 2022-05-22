@@ -577,13 +577,13 @@ def main():
     if args.cmd == "installkube":
         installer.init()
         installer.kubernetes_install()
-        time.sleep(5)
-        installer.kubernetes_join_workers()
-        time.sleep(5)
-        installer.init_cerebro_kube()
     else:
         installer.init_fabric()
-        if args.cmd == "installcerebro":
+        if args.cmd == "joinworkers":
+            installer.kubernetes_join_workers()
+            time.sleep(5)
+            installer.init_cerebro_kube()
+        elif args.cmd == "installcerebro":
             installer.install_controller()
             time.sleep(1)
             installer.install_worker()
