@@ -424,6 +424,51 @@ class CerebroInstaller:
         print("cerebro-controller's IP: ", controller_ip)
         time.sleep(3)
 
+    def run_rpc_worker(self):
+        from kubernetes import client, config
+
+        num_dask_processes = 16
+
+        pods = get_pod_names(self.kube_namespace)
+        workers = pods[1:]
+
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        
+        worker_cmd = "kubectl exec -t {} -- python3 cerebro/worker.py &"
+        for worker in workers:
+            self.runbg(worker_cmd.format(worker))
+
+        worker_ips = []
+        for i in range(1, self.w):
+            svc_name = "cerebro-service-worker-{}".format(i)
+            svc = v1.read_namespaced_service(
+                namespace=self.kube_namespace, name=svc_name)
+            worker_svc_ip = svc.spec.cluster_ip
+            worker_ips.append(worker_svc_ip)
+
+        print(worker_ips)
+        time.sleep(3)
+
+
+    def stop_rpc_worker(self):
+        from kubernetes import client, config
+
+        pods = get_pod_names(self.kube_namespace)
+        workers = pods[1:]
+        
+        for worker in workers:
+            try:
+                out = self.conn.run(
+                    "kubectl exec -t " + worker + " -- ps aux | grep '[w]orker.py' | awk '{print $2}'")
+                worker_pid = " ".join(out.stdout.split())
+                print("kill {}".format(worker_pid))
+                self.conn.run(
+                    "kubectl exec -t {} -- kill {}".format(worker, worker_pid))
+                print("Killed RPC worker.py in Worker: {}".format(worker_pid))
+            except Exception as e:
+                print("Couldn't kill RPC worker.py in {}: {}".format(worker, str(e)))
+
     def stop_jupyter(self):
         from kubernetes import client, config
 
@@ -586,8 +631,9 @@ def main():
         if args.cmd == "joinworkers":
             installer.kubernetes_join_workers()
             time.sleep(5)
-            installer.init_cerebro_kube()
         elif args.cmd == "installcerebro":
+            installer.init_cerebro_kube()
+            time.sleep(3)
             installer.install_controller()
             time.sleep(1)
             installer.install_worker()
