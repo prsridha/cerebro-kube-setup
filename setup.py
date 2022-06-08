@@ -427,7 +427,7 @@ class CerebroInstaller:
     def run_rpc_worker(self):
         from kubernetes import client, config
 
-        num_dask_processes = 16
+        rpcport = "7777"
 
         pods = get_pod_names(self.kube_namespace)
         workers = pods[1:]
@@ -440,12 +440,12 @@ class CerebroInstaller:
             self.runbg(worker_cmd.format(worker))
 
         worker_ips = []
-        for i in range(1, self.w):
+        for i in range(1, self.w - 1):
             svc_name = "cerebro-service-worker-{}".format(i)
             svc = v1.read_namespaced_service(
                 namespace=self.kube_namespace, name=svc_name)
             worker_svc_ip = svc.spec.cluster_ip
-            worker_ips.append(worker_svc_ip)
+            worker_ips.append("http://"+worker_svc_ip + ":" + rpcport)
 
         print(worker_ips)
         time.sleep(3)
@@ -648,12 +648,16 @@ def main():
             installer.install_worker()
         elif args.cmd == "rundask":
             installer.run_dask()
+        elif args.cmd == "runrpc":
+            installer.run_rpc_worker()
         elif args.cmd == "startjupyter":
             installer.start_jupyter()
         elif args.cmd == "copymodule":
             installer.copy_module()
         elif args.cmd == "stopdask":
             installer.stop_dask()
+        elif args.cmd == "stoprpc":
+            installer.stop_rpc_worker()
         elif args.cmd == "stopjupyter":
             installer.stop_jupyter()
         elif args.cmd == "delworkerdata":
