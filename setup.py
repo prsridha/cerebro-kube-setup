@@ -394,7 +394,21 @@ class CerebroInstaller:
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
 
+        # update the repo and reinstall requirements
+        pods = get_pod_names(self.kube_namespace)
+        controller = pods[0]
+        workers = pods[1:]
 
+        cmd1 = "kubectl exec -t {} -- git pull"
+        cmd2 = "kubectl exec -t {} -- pip install -r requirements.txt"
+        cmd3 = "kubectl exec -t {} -- python3 setup.py install --user"
+        for worker in workers:
+            self.conn.run(cmd1.format(worker))
+            self.conn.run(cmd2.format(worker))
+            self.conn.run(cmd3.format(worker))
+
+        print("Created the workers")
+        
     def run_dask(self):
         from kubernetes import client, config
 

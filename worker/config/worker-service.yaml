@@ -1,4 +1,4 @@
-# Worker Service workerContainerPort
+# Worker Service 
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,10 +8,12 @@ spec:
   selector:
     app: cerebro-worker-{{ .Values.workerID }}
   ports:
-  - protocol: "TCP"
+  - name: "dask-port"
+    protocol: "TCP"
     port: {{ .Values.worker.port }}
-    targetPort: {{ .Values.worker. }}
-  - protocol: "TCP"
+    targetPort: {{ .Values.worker.workerContainerPort }}
+  - name: "rpc-port"
+    protocol: "TCP"
     port: {{ .Values.worker.rcpport }}
     targetPort: {{ .Values.worker.rcpport }}
   type: LoadBalancer
