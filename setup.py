@@ -464,7 +464,6 @@ class CerebroInstaller:
         print(worker_ips)
         time.sleep(3)
 
-
     def stop_rpc_worker(self):
         from kubernetes import client, config
 
@@ -593,6 +592,16 @@ class CerebroInstaller:
 
         conn.close()
 
+    def git_pull(self):
+        pods = get_pod_names(self.kube_namespace)
+        workers = pods[1:]
+
+        cmd = "kubectl exec -t {} -- git pull"
+        self.conn.run(cmd.format(pods[0]))
+
+        for worker in workers:
+            self.conn.run(cmd.format(worker))
+
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
 
@@ -676,6 +685,8 @@ def main():
             installer.stop_jupyter()
         elif args.cmd == "delworkerdata":
             installer.delete_worker_data()
+        elif args.cmd == "gitpull":
+            installer.git_pull()
         elif args.cmd == "testing":
             installer.testing()
         else:
