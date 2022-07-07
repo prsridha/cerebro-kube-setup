@@ -28,7 +28,7 @@ spec:
       containers:
       - name: cerebro-worker-{{ .Values.workerID }}-container
         image: {{ .Values.worker.workerImage }}
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"

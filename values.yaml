@@ -9,11 +9,15 @@ controller:
   dataCapacity: 50Gi
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
-  homeCapacity: 10Gi
-  homeHostPath: /users/prsridha/
-  homeMountPath: /home
+  gitSyncImage: prsridha/git-sync
+  cerebroRepoMountPath: /cerebro-repo
+  cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
+  cerebroRepoHostPath: /users/prsridha/cerebro-repo
+  userRepoMountPath: /user-repo
+  userRepoURL: git@github.com:prsridha/coco-mop.git
+  userRepoHostPath: /users/prsridha/user-repo
   hyperparameterMountPath: /data/hyperparameter_properties
-  image: prsridha/cerebro-controller:latest
+  image: prsridha/cerebro-base:latest
   port: 8786
   propertiesMountPath: /data/cerebro_properties
 namespace: cerebro
@@ -30,4 +34,4 @@ worker:
   port: 8787
   rcpport: 7777
   workerContainerPort: 8787
-  workerImage: prsridha/cerebro-worker:latest
+  workerImage: prsridha/cerebro-kube:latest

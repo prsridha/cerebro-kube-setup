@@ -25,10 +25,55 @@ spec:
                 operator: In
                 values:
                 - node0
+      initContainers:
+      - name: git-sync-cerebro
+        image: {{ .Values.controller.gitSyncImage }}
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: cerebro-repo
+          mountPath: {{ .Values.controller.cerebroRepoMountPath }}
+        - name: git-secret
+          mountPath: /etc/git-secret
+        env:
+        - name: GIT_SYNC_REPO
+          value: {{ .Values.controller.cerebroRepoURL }}
+        - name: GIT_SYNC_BRANCH
+          value: main
+        - name: GIT_SYNC_ROOT
+          value: {{ .Values.controller.cerebroRepoMountPath }}
+        - name: GIT_SYNC_SSH
+          value: "true"
+        - name: GIT_SYNC_SERVER
+          value: github.com
+        securityContext:
+          runAsUser: 0
+      - name: git-sync-user-repo
+        image: {{ .Values.controller.gitSyncImage }}
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: user-repo
+          mountPath: {{ .Values.controller.userRepoMountPath }}
+        - name: git-secret
+          mountPath: /etc/git-secret
+        env:
+        - name: GIT_SYNC_REPO
+          value: {{ .Values.controller.userRepoURL }}
+        - name: GIT_SYNC_BRANCH
+          value: main
+        - name: GIT_SYNC_ROOT
+          value: {{ .Values.controller.userRepoMountPath }}
+        - name: GIT_SYNC_SSH
+          value: "true"
+        - name: GIT_SYNC_SERVER
+          value: github.com
+        securityContext:
+          runAsUser: 0
       containers:
       - name: cerebro-controller-container
         image: {{ .Values.controller.image }}
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
+        command: [ "/bin/bash", "-c", "--" ]
+        args: [ "while true; do sleep 5; done;" ]
         # resources:
         #   requests:
         #     memory: "64Mi"
@@ -39,8 +84,10 @@ spec:
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
-        - name: home
-          mountPath: {{ .Values.controller.homeMountPath }}
+        - name: cerebro-repo
+          mountPath: {{ .Values.controller.cerebroRepoMountPath }}
+        - name: user-repo
+          mountPath: {{ .Values.controller.userRepoMountPath }}
         - name: cerebro-hyperparameter-storage
           mountPath: {{ .Values.controller.hyperparameterMountPath }}
         - name: cerebro-checkpoint-storage
@@ -54,9 +101,14 @@ spec:
         ports:
         - containerPort: {{ .Values.controller.containerPort }}
       volumes:
-      - name: home
-        persistentVolumeClaim:
-          claimName: cerebro-home-pvc
+      - name: cerebro-repo
+        hostPath:
+          path: {{ .Values.controller.cerebroRepoHostPath }}
+          type: Directory
+      - name: user-repo
+        hostPath:
+          path: {{ .Values.controller.userRepoHostPath }}
+          type: Directory
       - name: cerebro-checkpoint-storage
         persistentVolumeClaim:
           claimName: cerebro-checkpoint-pvc
@@ -75,3 +127,7 @@ spec:
       - name: kube-config
         secret:
           secretName: kube-config
+      - name: git-secret
+        secret:
+          defaultMode: 256
+          secretName: git-creds # your-ssh-key
