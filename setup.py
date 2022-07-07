@@ -334,7 +334,7 @@ class CerebroInstaller:
         cmds = [
             "helm create ~/cerebro-controller",
             "rm -rf ~/cerebro-controller/templates/*",
-            "cp {}/controller/config/* ~/cerebro-controller/templates/".format(
+            "cp {}/controller/* ~/cerebro-controller/templates/".format(
                 self.root_path),
             "cp {}/values.yaml ~/cerebro-controller/values.yaml".format(
                 self.root_path),
@@ -352,18 +352,8 @@ class CerebroInstaller:
 
         controller = get_pod_names(self.kube_namespace)[0]
         
-        cmds = [
-            "git clone https://github.com/prsridha/cerebro-kube.git /home/cerebro-kube",
-            "pip install -r requirements.txt",
-            "python3 setup.py install --user"
-        ]
-        for cmd in cmds:
-            self.conn.run("kubectl exec -t {} -- {}".format(controller, cmd))
 
-        # grant permission to cerebro-kube folder
-        self.conn.sudo("chmod -R 777 ~/cerebro-kube".format(self.root_path))
-
-        self.start_jupyter()
+        # self.start_jupyter()
 
         print("Done")
 

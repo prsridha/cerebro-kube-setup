@@ -1,4 +1,7 @@
 controller:
+  cerebroRepoHostPath: /users/prsridha/cerebro-repo
+  cerebroRepoMountPath: /cerebro-repo
+  cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
   checkpointCapacity: 5Gi
   checkpointHostPath: /cerebro-checkpoint
   checkpointMountPath: /data/cerebro_checkpoint_storage
@@ -10,20 +13,17 @@ controller:
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
   gitSyncImage: prsridha/git-sync
-  cerebroRepoMountPath: /cerebro-repo
-  cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
-  cerebroRepoHostPath: /users/prsridha/cerebro-repo
-  userRepoMountPath: /user-repo
-  userRepoURL: git@github.com:prsridha/coco-mop.git
-  userRepoHostPath: /users/prsridha/user-repo
   hyperparameterMountPath: /data/hyperparameter_properties
   image: prsridha/cerebro-base:latest
   port: 8786
   propertiesMountPath: /data/cerebro_properties
+  userRepoHostPath: /users/prsridha/user-repo
+  userRepoMountPath: /user-repo
+  userRepoURL: git@github.com:prsridha/coco-mop.git
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.107.95.181
+  ip: 10.104.173.187
 worker:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data

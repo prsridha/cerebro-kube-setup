@@ -1,0 +1,16 @@
+kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=/tmp/known_hosts
+
+ssh-keygen -t rsa -b 4096 -f /tmp/sshkey -q -N ""
+cat ~/.ssh/id_rsa.pub
+
+# add key to git automatically from node
+curl -H "Authorization: token YourGeneratedToken" --data '{"title":"test-key","key":"ssh-rsa AAA..."}' https://api.github.com/user/keys
+
+docker login using access token
+kubectl create secret generic regcred --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson
+
+mkdir ~/cerebro-repo
+mkdir ~/user-repo
+
+sudo rm -rf ~/cerebro-repo
+sudo rm -rf ~/user-repo
