@@ -1,3 +1,8 @@
+creds:
+  gitToken: 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
+  dockerUser: prsridha
+  dockerToken: b9cdaf75-996d-48b1-be51-a0bfba41d59f
+  gitServer: github.com
 controller:
   cerebroRepoHostPath: /users/prsridha/cerebro-repo
   cerebroRepoMountPath: /cerebro-repo

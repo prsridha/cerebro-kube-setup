@@ -43,6 +43,8 @@ spec:
           mountPath: {{ .Values.worker.controllerDataMountPath }}
         ports:
         - containerPort: {{ .Values.worker.workerContainerPort }}
+      imagePullSecrets:
+      - name: regcred
       volumes:
       - name: cerebro-hyperparamter-storage
         configMap:

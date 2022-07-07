@@ -273,7 +273,8 @@ class CerebroInstaller:
         print("username: {}\npassword: {}".format("admin", "prom-operator"))
 
         home = str(Path.home())
-        with open(home + "/metrics_monitor_credentials.txt", "w+") as f:
+        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
+        with open(home + "/reference/metrics_monitor_credentials.txt", "w+") as f:
             f.write(
                 "Access Grafana with this link:\nhttp://<Cloudlab Host Name>: {}\n".format(port))
             f.write("username: {}\npassword: {}".format(
@@ -300,6 +301,50 @@ class CerebroInstaller:
         # install prometheus + grafana
         self.install_metrics_monitor()
 
+
+        # security
+
+        # read details from values.yaml
+        with open(self.root_path + "/values.yaml") as f:
+            values_yaml = yaml.safe_load(f)
+        print(values_yaml)
+
+        # generate ssh key
+        ssh_cmd = ' ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -q -N "" '
+        self.conn.run(ssh_cmd)
+
+        # add git server to known hosts
+        known_hosts_cmd = "ssh-keyscan {} > /tmp/known_hosts".format(values_yaml["creds"]["gitServer"])
+        self.conn.run(known_hosts_cmd)
+        
+        # write public key to a file
+        get_pub_key = 'cat ~/.ssh/id_rsa.pub'
+        pub_key = self.conn.run(get_pub_key).stdout.rstrip()
+        home = str(Path.home())
+        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
+        with open(home + "/reference/ssh_public_key.txt".format(self.root_path), "w+") as f:
+            f.write(pub_key)
+        
+        # add public key to git
+        git_cmd = """ curl -H "Authorization: token {git_token}" --data '{{"title":"node0","key":"{ssh_pub}"}}' https://api.github.com/user/keys """
+        formatted_git_cmd = git_cmd.format(git_token=values_yaml["creds"]["gitToken"], ssh_pub=pub_key)
+        self.conn.run(formatted_git_cmd)
+        
+        # create kubernetes secret using ssh key and git server as known host
+        kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=/tmp/known_hosts"
+        self.conn.run(kube_git_secret)
+
+        # login to docker using tokens
+        docker_cmd = "docker login -u {} -p {}".format(values_yaml["creds"]["dockerUser"], values_yaml["creds"]["dockerToken"])
+        self.conn.run(docker_cmd)
+
+        # create docker secret
+        docker_secret_cmd = "kubectl create secret generic regcred --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson"
+        self.conn.run(docker_secret_cmd)
+
+        self.conn.run("mkdir {}/cerebro-repo".format(self.root_path))
+        self.conn.run("mkdir {}/user-repo".format(self.root_path))
+
     def start_jupyter(self):
         users_port = 9999
         kube_port = 23456
@@ -308,7 +353,7 @@ class CerebroInstaller:
 
         controller = get_pod_names(self.kube_namespace)[0]
 
-        self.conn.run("kubectl cp {}/misc/run_jupyter.sh {}:/home/cerebro-kube/".format(self.root_path, controller))
+        self.conn.run("kubectl cp {}/misc/run_jupyter.sh {}:/cerebro-repo/cerebro-kube/".format(self.root_path, controller))
         self.runbg(
             "kubectl exec -t {} -- /bin/bash run_jupyter.sh".format(controller))
 
@@ -325,7 +370,8 @@ class CerebroInstaller:
         
         print(s)
         home = str(Path.home())
-        with open(home + "/jupyter_command.txt".format(self.root_path), "w+") as f:
+        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
+        with open(home + "/reference/jupyter_command.txt".format(self.root_path), "w+") as f:
             f.write(s)
 
     def install_controller(self):
@@ -363,7 +409,7 @@ class CerebroInstaller:
         cmds = [
             "helm create ~/cerebro-worker".format(self.root_path),
             "rm -rf ~/cerebro-worker/templates/*".format(self.root_path),
-            "cp {}/worker/config/* ~/cerebro-worker/templates/".format(self.root_path),
+            "cp {}/worker/* ~/cerebro-worker/templates/".format(self.root_path),
             "cp {}/values.yaml ~/cerebro-worker/values.yaml".format(self.root_path)
         ]
         c = "helm install --namespace={n} worker{id} ~/cerebro-worker --set workerID={id}"
@@ -384,18 +430,6 @@ class CerebroInstaller:
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
 
-        # update the repo and reinstall requirements
-        pods = get_pod_names(self.kube_namespace)
-        controller = pods[0]
-        workers = pods[1:]
-
-        cmd1 = "kubectl exec -t {} -- git pull"
-        cmd2 = "kubectl exec -t {} -- pip install -r requirements.txt"
-        cmd3 = "kubectl exec -t {} -- python3 setup.py install --user"
-        for worker in workers:
-            self.conn.run(cmd1.format(worker))
-            self.conn.run(cmd2.format(worker))
-            self.conn.run(cmd3.format(worker))
 
         print("Created the workers")
         
@@ -609,9 +643,8 @@ class CerebroInstaller:
                 print("Failed to delete in worker" + str(i-1))
 
     def testing(self):
-        self.s.run(
-            "rm -rf cerebro-kube")
-
+        pass
+        
     def close(self):
         self.s.close()
         self.conn.close()
