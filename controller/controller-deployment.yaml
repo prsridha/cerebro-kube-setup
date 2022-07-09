@@ -44,7 +44,7 @@ spec:
         - name: GIT_SYNC_SSH
           value: "true"
         - name: GIT_SYNC_SERVER
-          value: github.com
+          value: {{ .Values.creds.gitServer }}
         securityContext:
           runAsUser: 0
       - name: git-sync-user-repo
@@ -65,7 +65,7 @@ spec:
         - name: GIT_SYNC_SSH
           value: "true"
         - name: GIT_SYNC_SERVER
-          value: {{ .Values.cred.gitServer }}
+          value: {{ .Values.creds.gitServer }}
         securityContext:
           runAsUser: 0
       containers:
@@ -74,6 +74,7 @@ spec:
         imagePullPolicy: IfNotPresent
         command: [ "/bin/bash", "-c", "--" ]
         args: [ "while true; do sleep 5; done;" ]
+        workingDir: /cerebro-repo/cerebro-kube
         # resources:
         #   requests:
         #     memory: "64Mi"

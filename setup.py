@@ -342,8 +342,8 @@ class CerebroInstaller:
         docker_secret_cmd = "kubectl create secret generic regcred --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson"
         self.conn.run(docker_secret_cmd)
 
-        self.conn.run("mkdir {}/cerebro-repo".format(self.root_path))
-        self.conn.run("mkdir {}/user-repo".format(self.root_path))
+        self.conn.run("mkdir ~/cerebro-repo")
+        self.conn.run("mkdir ~/user-repo")
 
     def start_jupyter(self):
         users_port = 9999
@@ -363,7 +363,7 @@ class CerebroInstaller:
         cmd = "kubectl port-forward --address 127.0.0.1 {} {}:8888 &".format(
             controller, kube_port)
         out = self.runbg(cmd)
-        user_pf_command = "ssh -N -L {}:localhost:{} {}@<CloudLab host name>".format(
+        user_pf_command = "ssh -N -L {}:localhost:{} {}@cloudlab_host_name".format(
             users_port, kube_port, self.username)
         s = "Run this command on your local machine to access Jupyter Notebook : \n{}".format(
             user_pf_command) + "\n" + "http://localhost:{}/?token={}".format(users_port, jupyter_token)
@@ -399,7 +399,7 @@ class CerebroInstaller:
         controller = get_pod_names(self.kube_namespace)[0]
         
 
-        # self.start_jupyter()
+        self.start_jupyter()
 
         print("Done")
 
