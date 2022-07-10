@@ -1,6 +1,7 @@
 dask[complete]
 jupyter-server-proxy
 notebook
+nbconvert
 pandas
 fabric
 spacy

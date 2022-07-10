@@ -360,9 +360,11 @@ class CerebroInstaller:
         cmd = "kubectl exec -t {} -- cat JUPYTER_TOKEN".format(controller)
         jupyter_token = self.conn.run(cmd).stdout
 
+        time.sleep(3)
         cmd = "kubectl port-forward --address 127.0.0.1 {} {}:8888 &".format(
             controller, kube_port)
         out = self.runbg(cmd)
+        time.sleep(3)
         user_pf_command = "ssh -N -L {}:localhost:{} {}@cloudlab_host_name".format(
             users_port, kube_port, self.username)
         s = "Run this command on your local machine to access Jupyter Notebook : \n{}".format(
@@ -395,18 +397,14 @@ class CerebroInstaller:
 
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
-        
+
+        # add all permissions to repos
+        cmd1 = "sudo chmod -R 777 ~/cerebro-repo/cerebro-kube"
+        cmd2 = "sudo chmod -R 777 ~/user-repo/*"
+        self.conn.sudo(cmd1)
+        self.conn.sudo(cmd2)
+
         self.start_jupyter()
-
-
-        # add cerebro-repo to python path
-        controller = get_pod_names(self.kube_namespace)[0]
-        
-        cmd1 = 'kubectl exec -t ' + controller + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube"\' '
-        cmd2 = 'kubectl exec -t ' + controller + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube/cerebro"\' '
-
-        self.conn.run(cmd1)
-        self.conn.run(cmd2)
 
         print("Done")
 
@@ -439,17 +437,12 @@ class CerebroInstaller:
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
 
-        # add cerebro-repo to python path
-        workers = get_pod_names(self.kube_namespace)[1:]
-
-        for worker in workers:
-            cmd1 = 'kubectl exec -t ' + worker + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube"\' '
-            cmd2 = 'kubectl exec -t ' + worker + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube/cerebro"\' '
-
-            self.conn.run(cmd1)
-            self.conn.run(cmd2)
-
         print("Created the workers")
+
+        # pods = get_pod_names(self.kube_namespace)
+        # cmd = "kubectl exec -t {} -- pip install nbconvert"
+        # for pod in pods:
+        #     self.conn.run(cmd.format(pod))
         
     def run_dask(self):
         from kubernetes import client, config
@@ -622,8 +615,8 @@ class CerebroInstaller:
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
 
         cmds = [
-            # "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/val2014.zip",
-            # "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
+            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/val2014.zip",
+            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
             "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/train2014.zip",
             "mkdir /mnt/nfs/cerebro-data/coco",
             "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/annotations_trainval2014.zip",
@@ -663,36 +656,43 @@ class CerebroInstaller:
                 print("Failed to delete in worker" + str(i-1))
 
     def testing(self):
-        # add cerebro-repo to python path
-        controller = get_pod_names(self.kube_namespace)[0]
-        
-        cmd1 = 'kubectl exec -t ' + controller + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube"\' '
-        cmd2 = 'kubectl exec -t ' + controller + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube/cerebro"\' '
+        pass
 
-        self.conn.run(cmd1)
-        self.conn.run(cmd2)
-
-        print("Done")
-    
     def close(self):
         self.s.close()
         self.conn.close()
 
     def clean_up(self):
-        # cmd1 = "helm delete controller"
-        # cmd2 = "rm -rf ~/cerebro-controller ~/cerebro-repo ~/user-repo"
-        # self.conn.run(cmd1)
-        # self.conn.run(cmd2)
+        try:
+            cmd1 = "helm delete controller"
+            cmd2 = "sudo rm -rf ~/cerebro-controller ~/cerebro-repo ~/user-repo"
+            self.conn.run(cmd1)
+            self.conn.sudo(cmd2)
+            print("Controller clean up done!")
+        except Exception as e:
+            print("Cleaning up controller failed: ", str(e))
 
-        s = " ".join(["worker"+str(i) for i in range(1, self.w + 1)])
-        cmd1 = "helm delete " + s
-        cmd2 = "sudo rm -rf ~/cerebro-worker"
-        cmd3 = "sudo rm -rf ~/user-repo"
+        try:
+            s = " ".join(["worker"+str(i) for i in range(1, self.w-2)])
+            cmd1 = "helm delete " + s
+            cmd2 = "sudo rm -rf ~/cerebro-worker"
+            cmd3 = "sudo rm -rf ~/user-repo"
 
-        self.conn.run(cmd1) 
-        self.conn.sudo(cmd2)
-        self.s.sudo(cmd3)
+            self.conn.run(cmd1) 
+            self.conn.sudo(cmd2)
+            self.s.sudo(cmd3)
+            print("Worker clean up done!")
+        except Exception as e:
+            print("Cleaning up workers failed: ", str(e))    
 
+        try:
+            cmd1 = "mkdir -p ~/cerebro-repo"
+            cmd2 = "mkdir -p ~/user-repo"
+            self.conn.run(cmd1)
+            self.conn.run(cmd2)
+            print("Post clean up done!")
+        except Exception as e:
+            print("Post clean up failed: ", str(e))
 def main():
     root_path = "/users/{}/cerebro-kube-setup"
 
