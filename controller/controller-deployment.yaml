@@ -28,7 +28,7 @@ spec:
       initContainers:
       - name: git-sync-cerebro
         image: {{ .Values.controller.gitSyncImage }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - name: cerebro-repo
           mountPath: {{ .Values.controller.cerebroRepoMountPath }}
@@ -49,7 +49,7 @@ spec:
           runAsUser: 0
       - name: git-sync-user-repo
         image: {{ .Values.controller.gitSyncImage }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - name: user-repo
           mountPath: {{ .Values.controller.userRepoMountPath }}
@@ -71,7 +71,7 @@ spec:
       containers:
       - name: cerebro-controller-container
         image: {{ .Values.controller.image }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         command: [ "/bin/bash", "-c", "--" ]
         args: [ "while true; do sleep 5; done;" ]
         workingDir: /cerebro-repo/cerebro-kube

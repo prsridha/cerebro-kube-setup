@@ -10,3 +10,5 @@ dill
 tensorflow
 numpy
 torch
+torchvision
+nltk

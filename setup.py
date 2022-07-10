@@ -395,16 +395,25 @@ class CerebroInstaller:
 
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
+        
+        self.start_jupyter()
 
+
+        # add cerebro-repo to python path
         controller = get_pod_names(self.kube_namespace)[0]
         
+        cmd1 = 'kubectl exec -t ' + controller + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube"\' '
+        cmd2 = 'kubectl exec -t ' + controller + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube/cerebro"\' '
 
-        self.start_jupyter()
+        self.conn.run(cmd1)
+        self.conn.run(cmd2)
 
         print("Done")
 
     def install_worker(self):
         from kubernetes import client, config
+
+        self.s.run("mkdir -p ~/user-repo")
 
         cmds = [
             "helm create ~/cerebro-worker".format(self.root_path),
@@ -430,6 +439,15 @@ class CerebroInstaller:
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
 
+        # add cerebro-repo to python path
+        workers = get_pod_names(self.kube_namespace)[1:]
+
+        for worker in workers:
+            cmd1 = 'kubectl exec -t ' + worker + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube"\' '
+            cmd2 = 'kubectl exec -t ' + worker + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube/cerebro"\' '
+
+            self.conn.run(cmd1)
+            self.conn.run(cmd2)
 
         print("Created the workers")
         
@@ -561,16 +579,16 @@ class CerebroInstaller:
         pods = get_pod_names(self.kube_namespace)[1:]
 
         self.conn.run(
-            "cd ~/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
+            "cd ~/cerebro-repo/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
 
         for pod in pods:
             self.conn.run(
-                "kubectl exec -t {} -- rm -rf /cerebro-kube/cerebro".format(pod))
+                "kubectl exec -t {} -- rm -rf /cerebro-repo/cerebro-kube/cerebro".format(pod))
 
         cmds = [
-            "kubectl cp ~/cerebro-kube/cerebro.zip {}:/cerebro-kube/",
-            "kubectl cp ~/cerebro-kube/requirements.txt {}:/cerebro-kube/",
-            "kubectl cp ~/cerebro-kube/setup.py {}:/cerebro-kube/"
+            "kubectl cp ~/cerebro-repo/cerebro-kube/cerebro.zip {}:/cerebro-repo/cerebro-kube/",
+            "kubectl cp ~/cerebro-repo/cerebro-kube/requirements.txt {}:/cerebro-repo/cerebro-kube/",
+            "kubectl cp ~/cerebro-repo/cerebro-kube/setup.py {}:/cerebro-repo/cerebro-kube/"
         ]
         for pod in pods:
             for cmd in cmds:
@@ -578,12 +596,12 @@ class CerebroInstaller:
 
         for pod in pods:
             self.conn.run(
-                "kubectl exec -t {} -- unzip -o /cerebro-kube/cerebro.zip".format(pod))
+                "kubectl exec -t {} -- unzip -o /cerebro-repo/cerebro-kube/cerebro.zip".format(pod))
             self.conn.run(
-                "kubectl exec -t {} -- python3 /cerebro-kube/setup.py install --user".format(pod))
+                "kubectl exec -t {} -- python3 /cerebro-repo/cerebro-kube/setup.py install --user".format(pod))
 
-        self.conn.run("rm ~/cerebro-kube/cerebro.zip")
-        self.conn.run("cd ~/cerebro-kube && python3 setup.py install --user")
+        self.conn.run("rm ~/cerebro-repo/cerebro-kube/cerebro.zip")
+        self.conn.run("cd ~/cerebro-repo/cerebro-kube && python3 setup.py install --user")
 
         #TODO: need to check dask worker numbers
         self.stop_dask()
@@ -604,11 +622,13 @@ class CerebroInstaller:
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
 
         cmds = [
-            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/val2014.zip",
-            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
+            # "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/val2014.zip",
+            # "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
+            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/train2014.zip",
             "mkdir /mnt/nfs/cerebro-data/coco",
             "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/annotations_trainval2014.zip",
-            "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/val2014.zip"
+            "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/val2014.zip",
+            "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/train2014.zip"
         ]
 
         for cmd in cmds:
@@ -643,12 +663,35 @@ class CerebroInstaller:
                 print("Failed to delete in worker" + str(i-1))
 
     def testing(self):
-        pass
+        # add cerebro-repo to python path
+        controller = get_pod_names(self.kube_namespace)[0]
         
+        cmd1 = 'kubectl exec -t ' + controller + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube"\' '
+        cmd2 = 'kubectl exec -t ' + controller + ' -- bash -c \'export PYTHONPATH="${PYTHONPATH}:/cerebro-repo/cerebro-kube/cerebro"\' '
+
+        self.conn.run(cmd1)
+        self.conn.run(cmd2)
+
+        print("Done")
+    
     def close(self):
         self.s.close()
         self.conn.close()
 
+    def clean_up(self):
+        # cmd1 = "helm delete controller"
+        # cmd2 = "rm -rf ~/cerebro-controller ~/cerebro-repo ~/user-repo"
+        # self.conn.run(cmd1)
+        # self.conn.run(cmd2)
+
+        s = " ".join(["worker"+str(i) for i in range(1, self.w + 1)])
+        cmd1 = "helm delete " + s
+        cmd2 = "sudo rm -rf ~/cerebro-worker"
+        cmd3 = "sudo rm -rf ~/user-repo"
+
+        self.conn.run(cmd1) 
+        self.conn.sudo(cmd2)
+        self.s.sudo(cmd3)
 
 def main():
     root_path = "/users/{}/cerebro-kube-setup"
@@ -712,6 +755,8 @@ def main():
             installer.git_pull()
         elif args.cmd == "testing":
             installer.testing()
+        elif args.cmd == "cleanup":
+            installer.clean_up()
         else:
             print("Wrong option")
 

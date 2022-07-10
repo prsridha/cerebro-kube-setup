@@ -15,6 +15,6 @@ Host $GIT_SYNC_SERVER
 " > $HOME/.ssh/config
 
 # clone the repo in the required directory
-mkdir $GIT_SYNC_ROOT
+mkdir -p $GIT_SYNC_ROOT
 cd $GIT_SYNC_ROOT
 git clone $GIT_SYNC_REPO
