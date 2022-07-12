@@ -344,6 +344,16 @@ class CerebroInstaller:
 
         self.conn.run("mkdir ~/cerebro-repo")
         self.conn.run("mkdir ~/user-repo")
+        
+        # change permissions of pem file
+        cmd = "sudo chmod 400 ~/cloudlab.pem"
+        self.conn.sudo(cmd)
+        
+        # add all nodes to known_hosts
+        Path("~/.ssh").mkdir(parents=True, exist_ok=True)
+        cmd = "ssh-keyscan -H {} >> ~/.ssh/known_hosts"
+        for i in range(2, self.w):
+            self.conn.run(cmd.format("node" + str(i)))
 
     def start_jupyter(self):
         users_port = 9999
@@ -405,7 +415,12 @@ class CerebroInstaller:
         self.conn.sudo(cmd2)
 
         self.start_jupyter()
-
+        
+        # copy repo to all nodes
+        cmd = "scp -i ~/cloudlab.pem -r {} {}:{}"
+        for i in range(2, self.w):
+            self.conn.run(cmd.format(self.root_path, "node" + str(i), self.root_path))
+        
         print("Done")
 
     def install_worker(self):
@@ -693,6 +708,7 @@ class CerebroInstaller:
             print("Post clean up done!")
         except Exception as e:
             print("Post clean up failed: ", str(e))
+
 def main():
     root_path = "/users/{}/cerebro-kube-setup"
 
