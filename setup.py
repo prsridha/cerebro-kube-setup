@@ -116,8 +116,22 @@ class CerebroInstaller:
         self.s.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
 
         self.s.run("rm -rf /users/{}/cerebro-kube-setup".format(self.username))
-        self.s.run(
-            "git clone https://github.com/prsridha/cerebro-kube-setup.git")
+
+        # change permissions of pem file
+        home = str(Path.home())
+        cmd = "sudo chmod 400 {}/cloudlab.pem".format(home)
+        self.conn.sudo(cmd)
+        
+        # add all nodes to known_hosts
+        Path(home + "/.ssh").mkdir(parents=True, exist_ok=True)
+        cmd = "ssh-keyscan -H {} >> {}/.ssh/known_hosts"
+        for i in range(1, self.w):
+            self.conn.run(cmd.format("node" + str(i), home))
+
+        # copy repo to all nodes
+        cmd = "scp -i {}/cloudlab.pem -r {} {}:{}"
+        for i in range(1, self.w):
+            self.conn.run(cmd.format(home, self.root_path, "node" + str(i), self.root_path))
 
         self.conn.sudo(
             "sudo /bin/bash {}/misc/save_space.sh".format(self.root_path))
@@ -344,16 +358,6 @@ class CerebroInstaller:
 
         self.conn.run("mkdir ~/cerebro-repo")
         self.conn.run("mkdir ~/user-repo")
-        
-        # change permissions of pem file
-        cmd = "sudo chmod 400 ~/cloudlab.pem"
-        self.conn.sudo(cmd)
-        
-        # add all nodes to known_hosts
-        Path("~/.ssh").mkdir(parents=True, exist_ok=True)
-        cmd = "ssh-keyscan -H {} >> ~/.ssh/known_hosts"
-        for i in range(2, self.w):
-            self.conn.run(cmd.format("node" + str(i)))
 
     def start_jupyter(self):
         users_port = 9999
@@ -415,12 +419,7 @@ class CerebroInstaller:
         self.conn.sudo(cmd2)
 
         self.start_jupyter()
-        
-        # copy repo to all nodes
-        cmd = "scp -i ~/cloudlab.pem -r {} {}:{}"
-        for i in range(2, self.w):
-            self.conn.run(cmd.format(self.root_path, "node" + str(i), self.root_path))
-        
+
         print("Done")
 
     def install_worker(self):
