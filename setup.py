@@ -317,7 +317,7 @@ class CerebroInstaller:
 
 
         # security
-
+        home = str(Path.home())
         # read details from values.yaml
         with open(self.root_path + "/values.yaml") as f:
             values_yaml = yaml.safe_load(f)
@@ -349,15 +349,17 @@ class CerebroInstaller:
         self.conn.run(kube_git_secret)
 
         # login to docker using tokens
-        docker_cmd = "docker login -u {} -p {}".format(values_yaml["creds"]["dockerUser"], values_yaml["creds"]["dockerToken"])
-        self.conn.run(docker_cmd)
+        docker_cmd = "sudo docker login -u {} -p {}".format(values_yaml["creds"]["dockerUser"], values_yaml["creds"]["dockerToken"])
+        docker_cmd2 = "sudo chmod -R 777 {}/.docker".format(home)
+        self.conn.sudo(docker_cmd)
+        self.conn.sudo(docker_cmd2)
 
         # create docker secret
         docker_secret_cmd = "kubectl create secret generic regcred --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson"
         self.conn.run(docker_secret_cmd)
 
-        self.conn.run("mkdir ~/cerebro-repo")
-        self.conn.run("mkdir ~/user-repo")
+        self.conn.run("mkdir {}/cerebro-repo".format(home))
+        self.conn.run("mkdir {}/user-repo".format(home))
 
     def start_jupyter(self):
         users_port = 9999
