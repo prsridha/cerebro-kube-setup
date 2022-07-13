@@ -693,7 +693,7 @@ class CerebroInstaller:
             s = " ".join(["worker"+str(i) for i in range(1, self.w-2)])
             cmd1 = "helm delete " + s
             cmd2 = "sudo rm -rf {}/cerebro-worker".format(home)
-            cmd3 = "sudo rm -rf {}}/user-repo".format(home)
+            cmd3 = "sudo rm -rf {}/user-repo".format(home)
 
             self.conn.run(cmd1) 
             self.conn.sudo(cmd2)
