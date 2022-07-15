@@ -674,9 +674,10 @@ class CerebroInstaller:
         self.conn.close()
 
     def clean_up(self):
+        home = str(Path.home())
         try:
             cmd1 = "helm delete controller"
-            cmd2 = "sudo rm -rf ~/cerebro-controller ~/cerebro-repo ~/user-repo"
+            cmd2 = "sudo rm -rf {home}/cerebro-controller {home}/cerebro-repo {home}/user-repo".format(home=home)
             self.conn.run(cmd1)
             self.conn.sudo(cmd2)
             print("Controller clean up done!")
@@ -686,8 +687,8 @@ class CerebroInstaller:
         try:
             s = " ".join(["worker"+str(i) for i in range(1, self.w-2)])
             cmd1 = "helm delete " + s
-            cmd2 = "sudo rm -rf ~/cerebro-worker"
-            cmd3 = "sudo rm -rf ~/user-repo"
+            cmd2 = "sudo rm -rf {}/cerebro-worker".format(home)
+            cmd3 = "sudo rm -rf {}/user-repo".format(home)
 
             self.conn.run(cmd1) 
             self.conn.sudo(cmd2)
@@ -697,8 +698,8 @@ class CerebroInstaller:
             print("Cleaning up workers failed: ", str(e))    
 
         try:
-            cmd1 = "mkdir -p ~/cerebro-repo"
-            cmd2 = "mkdir -p ~/user-repo"
+            cmd1 = "mkdir -p {}/cerebro-repo".format(home)
+            cmd2 = "mkdir -p {}/user-repo".format(home)
             self.conn.run(cmd1)
             self.conn.run(cmd2)
             print("Post clean up done!")
