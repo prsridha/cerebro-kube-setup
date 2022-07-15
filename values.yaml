@@ -1,8 +1,8 @@
 creds:
-  gitToken: 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
-  dockerUser: prsridha
   dockerToken: b9cdaf75-996d-48b1-be51-a0bfba41d59f
+  dockerUser: prsridha
   gitServer: github.com
+  gitToken: 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
 controller:
   cerebroRepoHostPath: /users/prsridha/cerebro-repo
   cerebroRepoMountPath: /cerebro-repo
@@ -28,7 +28,7 @@ controller:
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.104.173.187
+  ip: 10.101.70.83
 worker:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
