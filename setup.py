@@ -454,11 +454,6 @@ class CerebroInstaller:
             time.sleep(1)
 
         print("Created the workers")
-
-        # pods = get_pod_names(self.kube_namespace)
-        # cmd = "kubectl exec -t {} -- pip install nbconvert"
-        # for pod in pods:
-        #     self.conn.run(cmd.format(pod))
         
     def run_dask(self):
         from kubernetes import client, config
@@ -610,7 +605,7 @@ class CerebroInstaller:
                 "kubectl exec -t {} -- python3 /cerebro-repo/cerebro-kube/setup.py install --user".format(pod))
 
         self.conn.run("rm ~/cerebro-repo/cerebro-kube/cerebro.zip")
-        self.conn.run("cd ~/cerebro-repo/cerebro-kube && python3 setup.py install --user")
+        self.conn.run("cd ~/cerebro-repo/cerebro-kube && pip install -v -e .")
 
         #TODO: need to check dask worker numbers
         self.stop_dask()
