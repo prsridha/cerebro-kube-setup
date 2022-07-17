@@ -580,7 +580,8 @@ class CerebroInstaller:
         from kubernetes import client, config
 
         # ignore controller as it's replicated to node0
-        pods = get_pod_names(self.kube_namespace)[1:]
+        all_pods = get_pod_names(self.kube_namespace)
+        pods = all_pods[1:]
 
         self.conn.run(
             "cd ~/cerebro-repo/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
@@ -606,6 +607,11 @@ class CerebroInstaller:
 
         self.conn.run("rm ~/cerebro-repo/cerebro-kube/cerebro.zip")
         self.conn.run("cd ~/cerebro-repo/cerebro-kube && pip install -v -e .")
+
+        # install pycoco module
+        cmd = "kubectl exec -t {} -- pip install -v -e /user-repo/coco-mop"
+        for pod in all_pods:
+            self.conn.run(cmd.format(pod))
 
         #TODO: need to check dask worker numbers
         self.stop_dask()
