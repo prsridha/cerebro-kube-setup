@@ -4,6 +4,8 @@ kind: Service
 metadata:
   name: cerebro-controller-service
   namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-controller
 spec:
   selector:
     app: cerebro-controller

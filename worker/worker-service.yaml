@@ -4,6 +4,8 @@ kind: Service
 metadata:
   name: cerebro-service-worker-{{ .Values.workerID }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-worker
 spec:
   selector:
     app: cerebro-worker-{{ .Values.workerID }}

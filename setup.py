@@ -1,4 +1,5 @@
 import os
+import json
 import site
 import time
 import yaml
@@ -452,6 +453,19 @@ class CerebroInstaller:
 
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
+
+        # write worker_ips to references
+        cmd = "kubectl get service -o json -l type=cerebro-worker"
+        out = self.conn.run(cmd)
+        output = json.loads(out.stdout)
+        ips = [pod["spec"]["clusterIPs"][0] for pod in output["items"] ]
+        
+        home = str(Path.home())
+        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
+        with open(home + "/reference/ml_worker_ips.txt", "w+") as f:
+            f.write(
+                "Model Hopper Worker IPs:\n")
+            f.write("\n".join(ips))
 
         print("Created the workers")
         
