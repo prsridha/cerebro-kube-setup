@@ -690,21 +690,7 @@ class CerebroInstaller:
                 print("Failed to delete in worker" + str(i-1))
 
     def testing(self):
-        # write worker_ips to references
-        cmd = "kubectl get service -o json -l type=cerebro-worker"
-        out = self.conn.run(cmd)
-        output = json.loads(out.stdout)
-        ips = []
-        for pod in output["items"]:
-            ip = "https://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
-            ips.append(ip)
-        
-        home = str(Path.home())
-        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
-        with open(home + "/reference/ml_worker_ips.txt", "w+") as f:
-            f.write(
-                "Model Hopper Worker IPs:\n")
-            f.write("\n".join(ips))
+        pass
 
     def close(self):
         self.s.close()
