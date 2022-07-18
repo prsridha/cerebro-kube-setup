@@ -458,7 +458,10 @@ class CerebroInstaller:
         cmd = "kubectl get service -o json -l type=cerebro-worker"
         out = self.conn.run(cmd)
         output = json.loads(out.stdout)
-        ips = [pod["spec"]["clusterIPs"][0] for pod in output["items"] ]
+        ips = []
+        for pod in output["items"]:
+            ip = "https://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
+            ips.append(ip)
         
         home = str(Path.home())
         Path(home + "/reference").mkdir(parents=True, exist_ok=True)
@@ -687,7 +690,21 @@ class CerebroInstaller:
                 print("Failed to delete in worker" + str(i-1))
 
     def testing(self):
-        pass
+        # write worker_ips to references
+        cmd = "kubectl get service -o json -l type=cerebro-worker"
+        out = self.conn.run(cmd)
+        output = json.loads(out.stdout)
+        ips = []
+        for pod in output["items"]:
+            ip = "https://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
+            ips.append(ip)
+        
+        home = str(Path.home())
+        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
+        with open(home + "/reference/ml_worker_ips.txt", "w+") as f:
+            f.write(
+                "Model Hopper Worker IPs:\n")
+            f.write("\n".join(ips))
 
     def close(self):
         self.s.close()
@@ -705,7 +722,7 @@ class CerebroInstaller:
             print("Cleaning up controller failed: ", str(e))
 
         try:
-            s = " ".join(["worker"+str(i) for i in range(1, self.w-2)])
+            s = " ".join(["worker"+str(i) for i in range(1, self.w-1)])
             cmd1 = "helm delete " + s
             cmd2 = "sudo rm -rf {}/cerebro-worker".format(home)
             cmd3 = "sudo rm -rf {}/user-repo".format(home)
@@ -761,6 +778,7 @@ def main():
             installer.install_worker()
             time.sleep(1)
             installer.run_dask()
+            installer.run_rpc()
         elif args.cmd == "downloadcoco":
             installer.download_coco()
 
