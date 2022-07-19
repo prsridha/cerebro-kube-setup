@@ -633,8 +633,9 @@ class CerebroInstaller:
         #TODO: need to check dask worker numbers
         self.stop_dask()
         self.stop_jupyter()
-        time.sleep(3) 
+        time.sleep(3)
         self.run_dask()
+        time.sleep(3)
         self.start_jupyter()
         time.sleep(3)
 
