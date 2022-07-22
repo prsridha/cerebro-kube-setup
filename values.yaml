@@ -29,7 +29,9 @@ namespace: cerebro
 nfs:
   capacity: 50Gi
   ip: 10.101.70.83
-worker:
+workerETL:
+  nworkers: 16
+  schedulerIP: 10.101.70.83
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
   controllerDataMountPath: /data/cerebro_data_storage
@@ -37,6 +39,14 @@ worker:
   dataMountPath: /data/cerebro_data_storage_worker
   hyperparameterMountPath: /data/hyperparameter_properties
   port: 8787
-  rcpport: 7777
   workerContainerPort: 8787
+  workerImage: prsridha/cerebro-kube:latest
+workerMOP:
+  checkpointMountPath: /data/cerebro_checkpoint_storage
+  controllerDataHostPath: /cerebro-data
+  controllerDataMountPath: /data/cerebro_data_storage
+  dataCapacity: 10Gi
+  dataMountPath: /data/cerebro_data_storage_worker
+  hyperparameterMountPath: /data/hyperparameter_properties
+  rcpport: 7777
   workerImage: prsridha/cerebro-kube:latest

@@ -428,15 +428,13 @@ class CerebroInstaller:
     def install_worker(self):
         from kubernetes import client, config
 
-        self.s.run("mkdir -p ~/user-repo")
-
         cmds = [
-            "helm create ~/cerebro-worker".format(self.root_path),
-            "rm -rf ~/cerebro-worker/templates/*".format(self.root_path),
-            "cp {}/worker/* ~/cerebro-worker/templates/".format(self.root_path),
-            "cp {}/values.yaml ~/cerebro-worker/values.yaml".format(self.root_path)
+            "helm create ~/cerebro-worker-etl".format(self.root_path),
+            "rm -rf ~/cerebro-worker-etl/templates/*".format(self.root_path),
+            "cp {}/worker-etl/* ~/cerebro-worker-etl/templates/".format(self.root_path),
+            "cp {}/values.yaml ~/cerebro-worker-etl/values.yaml".format(self.root_path)
         ]
-        c = "helm install --namespace={n} worker{id} ~/cerebro-worker --set workerID={id}"
+        c = "helm install --namespace={n} worker-etl-{id} ~/cerebro-worker-etl --set workerID={id}"
 
         # node0 for nfs + metrics
         # node1 for controller
@@ -449,13 +447,34 @@ class CerebroInstaller:
             time.sleep(0.5)
             self.conn.run(cmd)
 
-        label = "type=cerebro-worker"
-
+        label = "type=cerebro-worker-etl"
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
 
+        print("ETL-Workers created successfully")
+        
+        cmds = [
+            "helm create ~/cerebro-worker-mop".format(self.root_path),
+            "rm -rf ~/cerebro-worker-mop/templates/*".format(self.root_path),
+            "cp {}/worker-mop/* ~/cerebro-worker-mop/templates/".format(self.root_path),
+            "cp {}/values.yaml ~/cerebro-worker-mop/values.yaml".format(self.root_path)
+        ]
+        c = "helm install --namespace={n} worker-mop-{id} ~/cerebro-worker-mop --set workerID={id}"
+
+        for i in range(1, self.w - 1):
+            cmds.append(
+                c.format(id=i, n=self.kube_namespace))
+
+        for cmd in cmds:
+            time.sleep(0.5)
+            self.conn.run(cmd)
+
+        label = "type=cerebro-worker-mop"
+        while not check_pod_status(label, self.kube_namespace):
+            time.sleep(1)
+        
         # write worker_ips to references
-        cmd = "kubectl get service -o json -l type=cerebro-worker"
+        cmd = "kubectl get service -o json -l {}".format(label)
         out = self.conn.run(cmd)
         output = json.loads(out.stdout)
         ips = []
@@ -475,16 +494,17 @@ class CerebroInstaller:
     def run_dask(self):
         from kubernetes import client, config
 
-        num_dask_processes = 16
+        values_yaml = None
+        with open('{}/values.yaml'.format(self.root_path), 'r') as yamlfile:
+            values_yaml = yaml.safe_load(yamlfile)
 
-        pods = get_pod_names(self.kube_namespace)
-        controller = pods[0]
-        workers = pods[1:]
+        controller = get_pod_names(self.kube_namespace)[0]
 
         scheduler_cmd = "kubectl exec -t {} -- dask-scheduler --host=0.0.0.0 &".format(
             controller)
         out = self.runbg(scheduler_cmd)
 
+        # write scheduler IP to yaml file
         config.load_kube_config()
         v1 = client.CoreV1Api()
         svc_name = "cerebro-controller-service"
@@ -492,58 +512,15 @@ class CerebroInstaller:
             namespace=self.kube_namespace, name=svc_name)
         controller_ip = svc.spec.cluster_ip
 
-        print(controller_ip)
-        worker_cmd = "kubectl exec -t {} -- dask-worker tcp://{}:8786 --nworkers {} --name {} &"
-        for worker in workers:
-            name = worker.split("-")[2]
-            self.runbg(worker_cmd.format(worker, controller_ip, num_dask_processes, name))
+        values_yaml["workerETL"]["schedulerIP"] = controller_ip
+        
+        with open('{}/values.yaml'.format(self.root_path), 'w') as yamlfile:
+            yaml.safe_dump(values_yaml, yamlfile)
 
         print("cerebro-controller's IP: ", controller_ip)
         time.sleep(3)
 
-    def run_rpc_worker(self):
-        from kubernetes import client, config
-
-        rpcport = "7777"
-
-        pods = get_pod_names(self.kube_namespace)
-        workers = pods[1:]
-
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        
-        worker_cmd = "kubectl exec -t {} -- python3 cerebro/worker.py &"
-        for worker in workers:
-            self.runbg(worker_cmd.format(worker))
-
-        worker_ips = []
-        for i in range(1, self.w - 1):
-            svc_name = "cerebro-service-worker-{}".format(i)
-            svc = v1.read_namespaced_service(
-                namespace=self.kube_namespace, name=svc_name)
-            worker_svc_ip = svc.spec.cluster_ip
-            worker_ips.append("http://"+worker_svc_ip + ":" + rpcport)
-
-        print(worker_ips)
-        time.sleep(3)
-
-    def stop_rpc_worker(self):
-        from kubernetes import client, config
-
-        pods = get_pod_names(self.kube_namespace)
-        workers = pods[1:]
-        
-        for worker in workers:
-            try:
-                out = self.conn.run(
-                    "kubectl exec -t " + worker + " -- ps aux | grep '[w]orker.py' | awk '{print $2}'")
-                worker_pid = " ".join(out.stdout.split())
-                print("kill {}".format(worker_pid))
-                self.conn.run(
-                    "kubectl exec -t {} -- kill {}".format(worker, worker_pid))
-                print("Killed RPC worker.py in Worker: {}".format(worker_pid))
-            except Exception as e:
-                print("Couldn't kill RPC worker.py in {}: {}".format(worker, str(e)))
+        print("Dask Running!")
 
     def stop_jupyter(self):
         from kubernetes import client, config
@@ -562,36 +539,6 @@ class CerebroInstaller:
             print("Killed Jupyter Notebook: {}".format(notebook_pid))
         except Exception as e:
             print("Couldn't kill jupyter in controller: ", str(e))
-
-    def stop_dask(self):
-        from kubernetes import client, config
-
-        pods = get_pod_names(self.kube_namespace)
-        controller = pods[0]
-        workers = pods[1:]
-        
-        try: 
-            out = self.conn.run(
-                "kubectl exec -t " + controller + " -- ps aux | grep '[d]ask-scheduler' | awk '{print $2}'")
-            scheduler_pids = " ".join(out.stdout.split())
-            print(scheduler_pids)
-            self.conn.run(
-                "kubectl exec -t {} -- kill {}".format(controller, scheduler_pids))
-            print("Killed Dask Scheduler: {}".format(scheduler_pids))
-        except Exception as e:
-            print("Couldn't kill dask in controller: ", str(e))
-
-        for worker in workers:
-            try:
-                out = self.conn.run(
-                    "kubectl exec -t " + worker + " -- ps aux | grep '[d]ask-worker' | awk '{print $2}'")
-                worker_pid = " ".join(out.stdout.split())
-                print("kill {}".format(worker_pid))
-                self.conn.run(
-                    "kubectl exec -t {} -- kill {}".format(worker, worker_pid))
-                print("Killed Dask in Worker: {}".format(worker_pid))
-            except Exception as e:
-                print("Couldn't kill dask in {}: {}".format(worker, str(e)))
 
     def copy_module(self):
         from kubernetes import client, config
@@ -663,16 +610,6 @@ class CerebroInstaller:
             conn.sudo(cmd)
 
         conn.close()
-
-    def git_pull(self):
-        pods = get_pod_names(self.kube_namespace)
-        workers = pods[1:]
-
-        cmd = "kubectl exec -t {} -- git pull"
-        self.conn.run(cmd.format(pods[0]))
-
-        for worker in workers:
-            self.conn.run(cmd.format(worker))
 
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
@@ -765,7 +702,6 @@ def main():
             installer.install_worker()
             time.sleep(1)
             installer.run_dask()
-            installer.run_rpc()
         elif args.cmd == "downloadcoco":
             installer.download_coco()
 
@@ -775,22 +711,14 @@ def main():
             installer.install_worker()
         elif args.cmd == "rundask":
             installer.run_dask()
-        elif args.cmd == "runrpc":
-            installer.run_rpc_worker()
         elif args.cmd == "startjupyter":
             installer.start_jupyter()
         elif args.cmd == "copymodule":
             installer.copy_module()
-        elif args.cmd == "stopdask":
-            installer.stop_dask()
-        elif args.cmd == "stoprpc":
-            installer.stop_rpc_worker()
         elif args.cmd == "stopjupyter":
             installer.stop_jupyter()
         elif args.cmd == "delworkerdata":
             installer.delete_worker_data()
-        elif args.cmd == "gitpull":
-            installer.git_pull()
         elif args.cmd == "testing":
             installer.testing()
         elif args.cmd == "cleanup":

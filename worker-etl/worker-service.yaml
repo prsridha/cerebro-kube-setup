@@ -1,0 +1,17 @@
+# Worker Service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: cerebro-service-worker-etl-{{ .Values.workerID }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-worker-etl
+spec:
+  selector:
+    app: cerebro-worker-etl-{{ .Values.workerID }}
+  ports:
+  - name: "dask-port"
+    protocol: "TCP"
+    port: {{ .Values.workerETL.port }}
+    targetPort: {{ .Values.workerETL.workerContainerPort }}
+  type: LoadBalancer

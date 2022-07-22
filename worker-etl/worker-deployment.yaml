@@ -2,19 +2,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cerebro-worker-{{ .Values.workerID }}
+  name: cerebro-worker-etl-{{ .Values.workerID }}
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app: cerebro-worker-{{ .Values.workerID }}
-      type: cerebro-worker
+      app: cerebro-worker-etl-{{ .Values.workerID }}
+      type: cerebro-worker-etl
   replicas: 1
   template:
     metadata:
       labels:
-        app: cerebro-worker-{{.Values.workerID}}
-        type: cerebro-worker
+        app: cerebro-worker-etl-{{.Values.workerID}}
+        type: cerebro-worker-etl
     spec:
       affinity:
         nodeAffinity:
@@ -48,9 +48,11 @@ spec:
         securityContext:
           runAsUser: 0
       containers:
-      - name: cerebro-worker-{{ .Values.workerID }}-container
-        image: {{ .Values.worker.workerImage }}
+      - name: cerebro-worker-etl-{{ .Values.workerID }}-container
+        image: {{ .Values.workerETL.workerImage }}
         imagePullPolicy: Always
+        command: ["dask-worker"]
+        args: ["tcp://{{ .Values.workerETL.schedulerIP }}:8786", "--nworkers", "{{ .Values.workerETL.nworkers }}", "--name", "{{ .Values.workerID }}"]
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
@@ -58,15 +60,15 @@ spec:
         - name: user-repo
           mountPath: {{ .Values.controller.userRepoMountPath }}
         - name: cerebro-hyperparamter-storage
-          mountPath: {{ .Values.worker.hyperparameterMountPath }}
+          mountPath: {{ .Values.workerETL.hyperparameterMountPath }}
         - name: cerebro-data-storage-worker
-          mountPath: {{ .Values.worker.dataMountPath }}
+          mountPath: {{ .Values.workerETL.dataMountPath }}
         - name: cerebro-checkpoint-storage
-          mountPath: {{ .Values.worker.checkpointMountPath }}
+          mountPath: {{ .Values.workerETL.checkpointMountPath }}
         - name: cerebro-controller-storage
-          mountPath: {{ .Values.worker.controllerDataMountPath }}
+          mountPath: {{ .Values.workerETL.controllerDataMountPath }}
         ports:
-        - containerPort: {{ .Values.worker.workerContainerPort }}
+        - containerPort: {{ .Values.workerETL.workerContainerPort }}
       imagePullSecrets:
       - name: regcred
       volumes:
