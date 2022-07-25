@@ -1,8 +1,3 @@
-creds:
-  dockerToken: b9cdaf75-996d-48b1-be51-a0bfba41d59f
-  dockerUser: prsridha
-  gitServer: github.com
-  gitToken: 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
 controller:
   cerebroRepoHostPath: /users/prsridha/cerebro-repo
   cerebroRepoMountPath: /cerebro-repo
@@ -13,32 +8,38 @@ controller:
   configCapacity: 100Mi
   configHostPath: /cerebro-config
   configMountPath: /data/cerebro_config_storage
-  containerPort: 8786
   dataCapacity: 50Gi
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
   gitSyncImage: prsridha/git-sync
   hyperparameterMountPath: /data/hyperparameter_properties
   image: prsridha/cerebro-base:latest
-  port: 8786
+  daskPort: 8786
+  jupyterPort: 8888
+  jupyterUserPort: 9999
   propertiesMountPath: /data/cerebro_properties
   userRepoHostPath: /users/prsridha/user-repo
   userRepoMountPath: /user-repo
   userRepoURL: git@github.com:prsridha/coco-mop.git
+creds:
+  dockerToken: b9cdaf75-996d-48b1-be51-a0bfba41d59f
+  dockerUser: prsridha
+  gitServer: github.com
+  gitToken: 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
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.101.70.83
+  ip: 10.107.54.200
 workerETL:
-  nworkers: 16
-  schedulerIP: 10.101.70.83
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
   controllerDataMountPath: /data/cerebro_data_storage
   dataCapacity: 10Gi
   dataMountPath: /data/cerebro_data_storage_worker
   hyperparameterMountPath: /data/hyperparameter_properties
+  nworkers: 16
   port: 8787
+  schedulerIP: 10.101.88.146
   workerContainerPort: 8787
   workerImage: prsridha/cerebro-kube:latest
 workerMOP:

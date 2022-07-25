@@ -10,12 +10,8 @@ spec:
   selector:
     app: cerebro-worker-{{ .Values.workerID }}
   ports:
-  - name: "dask-port"
-    protocol: "TCP"
-    port: {{ .Values.worker.port }}
-    targetPort: {{ .Values.worker.workerContainerPort }}
   - name: "rpc-port"
     protocol: "TCP"
-    port: {{ .Values.worker.rcpport }}
-    targetPort: {{ .Values.worker.rcpport }}
+    port: {{ .Values.workerMOP.rcpport }}
+    targetPort: {{ .Values.workerMOP.rcpport }}
   type: LoadBalancer

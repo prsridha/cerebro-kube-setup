@@ -363,27 +363,29 @@ class CerebroInstaller:
         self.conn.run("mkdir {}/user-repo".format(home))
 
     def start_jupyter(self):
-        users_port = 9999
-        kube_port = 23456
-
         from kubernetes import client, config
+
+        with open('{}/values.yaml'.format(self.root_path), 'r') as yamlfile:
+            values_yaml = yaml.safe_load(yamlfile)
+        users_port = values_yaml["controller"]["jupyterUserPort"]
 
         controller = get_pod_names(self.kube_namespace)[0]
 
-        self.conn.run("kubectl cp {}/misc/run_jupyter.sh {}:/cerebro-repo/cerebro-kube/".format(self.root_path, controller))
-        self.runbg(
-            "kubectl exec -t {} -- /bin/bash run_jupyter.sh".format(controller))
-
         cmd = "kubectl exec -t {} -- cat JUPYTER_TOKEN".format(controller)
         jupyter_token = self.conn.run(cmd).stdout
+        
+        namespace = "cerebro"
+        label = "serviceApp=jupyter"
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        names = []
+        jupyter_svc = v1.list_namespaced_service(
+            namespace, label_selector=label, watch=False)
+        jupyter_svc = jupyter_svc.items[0]
+        node_port = jupyter_svc.spec.ports[0].node_port
 
-        time.sleep(3)
-        cmd = "kubectl port-forward --address 127.0.0.1 {} {}:8888 &".format(
-            controller, kube_port)
-        out = self.runbg(cmd)
-        time.sleep(3)
         user_pf_command = "ssh -N -L {}:localhost:{} {}@cloudlab_host_name".format(
-            users_port, kube_port, self.username)
+            users_port, node_port, self.username)
         s = "Run this command on your local machine to access Jupyter Notebook : \n{}".format(
             user_pf_command) + "\n" + "http://localhost:{}/?token={}".format(users_port, jupyter_token)
         
@@ -427,6 +429,8 @@ class CerebroInstaller:
 
     def install_worker(self):
         from kubernetes import client, config
+
+        self.s.run("mkdir -p ~/user-repo")
 
         cmds = [
             "helm create ~/cerebro-worker-etl".format(self.root_path),
@@ -490,7 +494,7 @@ class CerebroInstaller:
             f.write("\n".join(ips))
 
         print("Created the workers")
-        
+
     def run_dask(self):
         from kubernetes import client, config
 
@@ -646,14 +650,17 @@ class CerebroInstaller:
             print("Cleaning up controller failed: ", str(e))
 
         try:
-            s = " ".join(["worker"+str(i) for i in range(1, self.w-1)])
+            s = " ".join(["worker-etl-"+str(i) for i in range(1, self.w-1)])
             cmd1 = "helm delete " + s
-            cmd2 = "sudo rm -rf {}/cerebro-worker".format(home)
-            cmd3 = "sudo rm -rf {}/user-repo".format(home)
+            s = " ".join(["worker-mop-"+str(i) for i in range(1, self.w-1)])
+            # cmd2 = "helm delete " + s
+            cmd3 = "sudo rm -rf {}/cerebro-worker-etl".format(home)
+            cmd4 = "sudo rm -rf {}/user-repo".format(home)
 
             self.conn.run(cmd1) 
-            self.conn.sudo(cmd2)
-            self.s.sudo(cmd3)
+            self.conn.run(cmd2) 
+            self.conn.sudo(cmd3)
+            self.s.sudo(cmd4)
             print("Worker clean up done!")
         except Exception as e:
             print("Cleaning up workers failed: ", str(e))    
@@ -695,13 +702,13 @@ def main():
             installer.kubernetes_join_workers()
             time.sleep(5)
         elif args.cmd == "installcerebro":
-            installer.init_cerebro_kube()
-            time.sleep(3)
+            # installer.init_cerebro_kube()
+            # time.sleep(3)
             installer.install_controller()
             time.sleep(1)
-            installer.install_worker()
-            time.sleep(1)
             installer.run_dask()
+            time.sleep(1)            
+            installer.install_worker()
         elif args.cmd == "downloadcoco":
             installer.download_coco()
 
