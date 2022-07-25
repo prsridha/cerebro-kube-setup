@@ -55,12 +55,22 @@ def get_pod_names(namespace):
         namespace, label_selector=label, watch=False)
     controller = pods_list.items[0].metadata.name
 
-    label = "type=cerebro-worker"
+    label = "type=cerebro-worker-etl"
     pods_list = v1.list_namespaced_pod(
         namespace, label_selector=label, watch=False)
-    workers = [i.metadata.name for i in pods_list.items]
+    etl_workers = [i.metadata.name for i in pods_list.items]
 
-    return [controller] + workers
+    label = "type=cerebro-worker-mop"
+    pods_list = v1.list_namespaced_pod(
+        namespace, label_selector=label, watch=False)
+    mop_workers = [i.metadata.name for i in pods_list.items]
+
+    return {
+        "controller": controller,
+        "etl_workers": etl_workers,
+        "mop_workers": mop_workers
+
+    }
 
 class CerebroInstaller:
     def __init__(self, root_path, workers, kube_params):
@@ -76,9 +86,6 @@ class CerebroInstaller:
         self.s = None
         self.conn = None
         self.username = None
-
-    def runbg(self, cmd, sockname="dtach"):
-        return self.conn.run('dtach -n `mktemp -u /tmp/%s.XXXX` %s' % (sockname, cmd))
 
     def init_fabric(self):
         from fabric2 import ThreadingGroup, Connection
@@ -362,14 +369,14 @@ class CerebroInstaller:
         self.conn.run("mkdir {}/cerebro-repo".format(home))
         self.conn.run("mkdir {}/user-repo".format(home))
 
-    def start_jupyter(self):
+    def add_jupyter_meta(self):
         from kubernetes import client, config
 
         with open('{}/values.yaml'.format(self.root_path), 'r') as yamlfile:
             values_yaml = yaml.safe_load(yamlfile)
         users_port = values_yaml["controller"]["jupyterUserPort"]
 
-        controller = get_pod_names(self.kube_namespace)[0]
+        controller = get_pod_names(self.kube_namespace)["controller"]
 
         cmd = "kubectl exec -t {} -- cat JUPYTER_TOKEN".format(controller)
         jupyter_token = self.conn.run(cmd).stdout
@@ -423,7 +430,8 @@ class CerebroInstaller:
         self.conn.sudo(cmd1)
         self.conn.sudo(cmd2)
 
-        self.start_jupyter()
+        self.add_dask_meta()
+        self.add_jupyter_meta()
 
         print("Done")
 
@@ -495,18 +503,12 @@ class CerebroInstaller:
 
         print("Created the workers")
 
-    def run_dask(self):
+    def add_dask_meta(self):
         from kubernetes import client, config
 
         values_yaml = None
         with open('{}/values.yaml'.format(self.root_path), 'r') as yamlfile:
             values_yaml = yaml.safe_load(yamlfile)
-
-        controller = get_pod_names(self.kube_namespace)[0]
-
-        scheduler_cmd = "kubectl exec -t {} -- dask-scheduler --host=0.0.0.0 &".format(
-            controller)
-        out = self.runbg(scheduler_cmd)
 
         # write scheduler IP to yaml file
         config.load_kube_config()
@@ -522,34 +524,13 @@ class CerebroInstaller:
             yaml.safe_dump(values_yaml, yamlfile)
 
         print("cerebro-controller's IP: ", controller_ip)
-        time.sleep(3)
-
-        print("Dask Running!")
-
-    def stop_jupyter(self):
-        from kubernetes import client, config
-
-        pods = get_pod_names(self.kube_namespace)
-        controller = pods[0]
-
-        out = self.conn.run(
-            "kubectl exec -t " + controller + " -- ps aux | grep '[j]upyter' | awk '{print $2}'")
-        notebook_pid = " ".join(out.stdout.split())
-        print(notebook_pid)
-
-        try:
-            self.conn.run(
-                "kubectl exec -t {} -- kill -9 {}".format(controller, notebook_pid))
-            print("Killed Jupyter Notebook: {}".format(notebook_pid))
-        except Exception as e:
-            print("Couldn't kill jupyter in controller: ", str(e))
 
     def copy_module(self):
         from kubernetes import client, config
 
         # ignore controller as it's replicated to node0
         all_pods = get_pod_names(self.kube_namespace)
-        pods = all_pods[1:]
+        pods = all_pods["etl_workers"] + all_pods["mop_workers"]
 
         self.conn.run(
             "cd ~/cerebro-repo/cerebro-kube && zip cerebro.zip cerebro/*".format(self.root_path))
@@ -577,18 +558,15 @@ class CerebroInstaller:
         self.conn.run("cd ~/cerebro-repo/cerebro-kube && pip install -v -e .")
 
         # install pycoco module
+        all_pods = get_pod_names(self.kube_namespace)
+        pods = [all_pods["controller"]] + all_pods["etl_workers"] + all_pods["mop_workers"]
+
         cmd = "kubectl exec -t {} -- pip install -v -e /user-repo/coco-mop"
-        for pod in all_pods:
+        for pod in pods:
             self.conn.run(cmd.format(pod))
 
         #TODO: need to check dask worker numbers
-        self.stop_dask()
-        self.stop_jupyter()
-        time.sleep(3)
-        self.run_dask()
-        time.sleep(3)
-        self.start_jupyter()
-        time.sleep(3)
+
 
     def download_coco(self):
         from fabric2 import ThreadingGroup, Connection
@@ -614,6 +592,11 @@ class CerebroInstaller:
             conn.sudo(cmd)
 
         conn.close()
+
+        # ssh-keygen
+        # cat ~/.ssh/id_rsa.pub
+        # nano ~/.ssh/authorized_keys
+        # chmod 777 .
 
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
@@ -653,7 +636,7 @@ class CerebroInstaller:
             s = " ".join(["worker-etl-"+str(i) for i in range(1, self.w-1)])
             cmd1 = "helm delete " + s
             s = " ".join(["worker-mop-"+str(i) for i in range(1, self.w-1)])
-            # cmd2 = "helm delete " + s
+            cmd2 = "helm delete " + s
             cmd3 = "sudo rm -rf {}/cerebro-worker-etl".format(home)
             cmd4 = "sudo rm -rf {}/user-repo".format(home)
 
@@ -705,9 +688,6 @@ def main():
             # installer.init_cerebro_kube()
             # time.sleep(3)
             installer.install_controller()
-            time.sleep(1)
-            installer.run_dask()
-            time.sleep(1)            
             installer.install_worker()
         elif args.cmd == "downloadcoco":
             installer.download_coco()
@@ -716,14 +696,12 @@ def main():
             installer.install_controller()
         elif args.cmd == "installworkers":
             installer.install_worker()
-        elif args.cmd == "rundask":
-            installer.run_dask()
-        elif args.cmd == "startjupyter":
-            installer.start_jupyter()
+        elif args.cmd == "daskmeta":
+            installer.add_dask_meta()
+        elif args.cmd == "jupytermeta":
+            installer.add_jupyter_meta()
         elif args.cmd == "copymodule":
             installer.copy_module()
-        elif args.cmd == "stopjupyter":
-            installer.stop_jupyter()
         elif args.cmd == "delworkerdata":
             installer.delete_worker_data()
         elif args.cmd == "testing":
