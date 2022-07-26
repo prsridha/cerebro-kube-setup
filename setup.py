@@ -685,8 +685,8 @@ def main():
             installer.kubernetes_join_workers()
             time.sleep(5)
         elif args.cmd == "installcerebro":
-            # installer.init_cerebro_kube()
-            # time.sleep(3)
+            installer.init_cerebro_kube()
+            time.sleep(3)
             installer.install_controller()
             installer.install_worker()
         elif args.cmd == "downloadcoco":
