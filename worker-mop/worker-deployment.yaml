@@ -51,11 +51,13 @@ spec:
       - name: cerebro-worker-mop-{{ .Values.workerID }}-container
         image: {{ .Values.workerMOP.workerImage }}
         imagePullPolicy: Always
-        command: ["python3"]
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
         args: ["cerebro/worker.py"]
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
+        - name: WORKER_TYPE
+          value: "MOP"
         volumeMounts:
         - name: user-repo
           mountPath: {{ .Values.controller.userRepoMountPath }}

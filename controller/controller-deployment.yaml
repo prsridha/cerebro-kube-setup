@@ -72,7 +72,7 @@ spec:
       - name: cerebro-controller-container
         image: {{ .Values.controller.image }}
         imagePullPolicy: Always
-        command: [ "/bin/bash", "run_dask_jupyter.sh"]
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
         workingDir: /cerebro-repo/cerebro-kube
         # resources:
         #   requests:
@@ -81,6 +81,9 @@ spec:
         #   limits:
         #     memory: "128Mi"
         #     cpu: "500m"
+        env:
+        - name: POD_TYPE
+          value: "controller"
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube

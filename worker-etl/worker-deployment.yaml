@@ -51,11 +51,16 @@ spec:
       - name: cerebro-worker-etl-{{ .Values.workerID }}-container
         image: {{ .Values.workerETL.workerImage }}
         imagePullPolicy: Always
-        command: ["dask-worker"]
-        args: ["tcp://{{ .Values.workerETL.schedulerIP }}:8786", "--nworkers", "{{ .Values.workerETL.nworkers }}", "--name", "{{ .Values.workerID }}"]
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
+        - name: WORKER_TYPE
+          value: "ETL"
+        - name: DASK_SCHEDULER_IP
+          value: "{{ .Values.workerETL.schedulerIP }}"
+        - name: NUM_DASK_WORKERS
+          value: "{{ .Values.workerETL.nworkers }}"
         volumeMounts:
         - name: user-repo
           mountPath: {{ .Values.controller.userRepoMountPath }}
