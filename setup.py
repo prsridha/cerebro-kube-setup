@@ -493,7 +493,7 @@ class CerebroInstaller:
         output = json.loads(out.stdout)
         ips = []
         for pod in output["items"]:
-            ip = "https://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
+            ip = "http://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
             ips.append(ip)
         
         home = str(Path.home())
@@ -624,14 +624,14 @@ class CerebroInstaller:
 
     def clean_up(self):
         home = str(Path.home())
-        try:
-            cmd1 = "helm delete controller"
-            cmd2 = "sudo rm -rf {home}/cerebro-controller {home}/cerebro-repo {home}/user-repo".format(home=home)
-            self.conn.run(cmd1)
-            self.conn.sudo(cmd2)
-            print("Controller clean up done!")
-        except Exception as e:
-            print("Cleaning up controller failed: ", str(e))
+        # try:
+        #     cmd1 = "helm delete controller"
+        #     cmd2 = "sudo rm -rf {home}/cerebro-controller {home}/cerebro-repo {home}/user-repo".format(home=home)
+        #     self.conn.run(cmd1)
+        #     self.conn.sudo(cmd2)
+        #     print("Controller clean up done!")
+        # except Exception as e:
+        #     print("Cleaning up controller failed: ", str(e))
 
         try:
             s = " ".join(["worker-etl-"+str(i) for i in range(1, self.w-1)])
