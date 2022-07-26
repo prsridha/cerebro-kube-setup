@@ -424,6 +424,8 @@ class CerebroInstaller:
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
 
+        time.sleep(5)
+
         # add all permissions to repos
         cmd1 = "sudo chmod -R 777 ~/cerebro-repo/cerebro-kube"
         cmd2 = "sudo chmod -R 777 ~/user-repo/*"
@@ -567,7 +569,6 @@ class CerebroInstaller:
 
         #TODO: need to check dask worker numbers
 
-
     def download_coco(self):
         from fabric2 import ThreadingGroup, Connection
 
@@ -685,13 +686,12 @@ def main():
             installer.kubernetes_join_workers()
             time.sleep(5)
         elif args.cmd == "installcerebro":
-            # installer.init_cerebro_kube()
-            # time.sleep(3)
+            installer.init_cerebro_kube()
+            time.sleep(3)
             installer.install_controller()
             installer.install_worker()
         elif args.cmd == "downloadcoco":
             installer.download_coco()
-
         elif args.cmd == "installcontroller":
             installer.install_controller()
         elif args.cmd == "installworkers":

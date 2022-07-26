@@ -57,7 +57,7 @@ spec:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
         - name: WORKER_TYPE
-          value: "MOP"
+          value: "mop"
         volumeMounts:
         - name: user-repo
           mountPath: {{ .Values.controller.userRepoMountPath }}
