@@ -22,11 +22,3 @@ if [ -z "$(ls -A $GIT_SYNC_ROOT)" ]; then
 else
    echo "Directory not empty, skipping git clone"
 fi
-
-# run init.sh to initialize any repo-specific stuff
-cd */
-if [ -f init.sh ]; then
-    /bin/bash init.sh
-else
-    echo "init.sh not found, skipping"
-fi
