@@ -56,7 +56,7 @@ spec:
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
-        - name: WORKER_TYPE
+        - name: POD_TYPE
           value: "mop"
         volumeMounts:
         - name: user-repo

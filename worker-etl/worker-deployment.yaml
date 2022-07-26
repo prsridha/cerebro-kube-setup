@@ -55,7 +55,7 @@ spec:
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
-        - name: WORKER_TYPE
+        - name: POD_TYPE
           value: "etl"
         - name: DASK_SCHEDULER_IP
           value: "{{ .Values.workerETL.schedulerIP }}"
