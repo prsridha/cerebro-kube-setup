@@ -5,12 +5,29 @@ metadata:
   name: cerebro-controller-service
   namespace: {{ .Release.Namespace }}
   labels:
-    type: cerebro-controller
+    type: cerebro-controller-svc
+    serviceApp: dask
 spec:
   selector:
     app: cerebro-controller
   ports:
   - protocol: "TCP"
-    port: {{ .Values.controller.port }}
-    targetPort: {{ .Values.controller.containerPort }}
+    port: {{ .Values.controller.daskPort }}
+    targetPort: {{ .Values.controller.daskPort }}
   type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cerebro-controller-port-forward
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-controller-svc
+    serviceApp: jupyter
+spec:
+  selector:
+    app: cerebro-controller
+  ports:
+    - port: {{ .Values.controller.jupyterPort }}
+      targetPort: {{ .Values.controller.jupyterPort }}
+  type: NodePort

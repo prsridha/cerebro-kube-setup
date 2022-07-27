@@ -17,4 +17,8 @@ Host $GIT_SYNC_SERVER
 # clone the repo in the required directory
 mkdir -p $GIT_SYNC_ROOT
 cd $GIT_SYNC_ROOT
-git clone $GIT_SYNC_REPO
+if [ -z "$(ls -A $GIT_SYNC_ROOT)" ]; then
+   git clone $GIT_SYNC_REPO
+else
+   echo "Directory not empty, skipping git clone"
+fi

@@ -1,0 +1,17 @@
+# Worker Service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: cerebro-service-worker-mop-{{ .Values.workerID }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-worker-mop
+spec:
+  selector:
+    app: cerebro-worker-mop-{{ .Values.workerID }}
+  ports:
+  - name: "rpc-port"
+    protocol: "TCP"
+    port: {{ .Values.workerMOP.rcpport }}
+    targetPort: {{ .Values.workerMOP.rcpport }}
+  type: LoadBalancer

@@ -2,19 +2,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cerebro-worker-{{ .Values.workerID }}
+  name: cerebro-worker-mop-{{ .Values.workerID }}
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app: cerebro-worker-{{ .Values.workerID }}
-      type: cerebro-worker
+      app: cerebro-worker-mop-{{ .Values.workerID }}
+      type: cerebro-worker-mop
   replicas: 1
   template:
     metadata:
       labels:
-        app: cerebro-worker-{{.Values.workerID}}
-        type: cerebro-worker
+        app: cerebro-worker-mop-{{.Values.workerID}}
+        type: cerebro-worker-mop
     spec:
       affinity:
         nodeAffinity:
@@ -48,25 +48,27 @@ spec:
         securityContext:
           runAsUser: 0
       containers:
-      - name: cerebro-worker-{{ .Values.workerID }}-container
-        image: {{ .Values.worker.workerImage }}
+      - name: cerebro-worker-mop-{{ .Values.workerID }}-container
+        image: {{ .Values.workerMOP.workerImage }}
         imagePullPolicy: Always
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        args: ["cerebro/worker.py"]
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
+        - name: POD_TYPE
+          value: "mop"
         volumeMounts:
         - name: user-repo
           mountPath: {{ .Values.controller.userRepoMountPath }}
         - name: cerebro-hyperparamter-storage
-          mountPath: {{ .Values.worker.hyperparameterMountPath }}
+          mountPath: {{ .Values.workerMOP.hyperparameterMountPath }}
         - name: cerebro-data-storage-worker
-          mountPath: {{ .Values.worker.dataMountPath }}
+          mountPath: {{ .Values.workerMOP.dataMountPath }}
         - name: cerebro-checkpoint-storage
-          mountPath: {{ .Values.worker.checkpointMountPath }}
+          mountPath: {{ .Values.workerMOP.checkpointMountPath }}
         - name: cerebro-controller-storage
-          mountPath: {{ .Values.worker.controllerDataMountPath }}
-        ports:
-        - containerPort: {{ .Values.worker.workerContainerPort }}
+          mountPath: {{ .Values.workerMOP.controllerDataMountPath }}
       imagePullSecrets:
       - name: regcred
       volumes:

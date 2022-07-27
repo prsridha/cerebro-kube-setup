@@ -1,0 +1,100 @@
+# Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cerebro-worker-etl-{{ .Values.workerID }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: cerebro-worker-etl-{{ .Values.workerID }}
+      type: cerebro-worker-etl
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: cerebro-worker-etl-{{.Values.workerID}}
+        type: cerebro-worker-etl
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cerebro/nodename
+                operator: In
+                values:
+                - node{{ add .Values.workerID 1}}
+      initContainers:
+      - name: git-sync-user-repo
+        image: {{ .Values.controller.gitSyncImage }}
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: user-repo
+          mountPath: {{ .Values.controller.userRepoMountPath }}
+        - name: git-secret
+          mountPath: /etc/git-secret
+        env:
+        - name: GIT_SYNC_REPO
+          value: {{ .Values.controller.userRepoURL }}
+        - name: GIT_SYNC_BRANCH
+          value: main
+        - name: GIT_SYNC_ROOT
+          value: {{ .Values.controller.userRepoMountPath }}
+        - name: GIT_SYNC_SSH
+          value: "true"
+        - name: GIT_SYNC_SERVER
+          value: {{ .Values.creds.gitServer }}
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: cerebro-worker-etl-{{ .Values.workerID }}-container
+        image: {{ .Values.workerETL.workerImage }}
+        imagePullPolicy: Always
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        env:
+        - name: WORKER_ID_SELF
+          value: "{{ .Values.workerID }}"
+        - name: POD_TYPE
+          value: "etl"
+        - name: DASK_SCHEDULER_IP
+          value: "{{ .Values.workerETL.schedulerIP }}"
+        - name: NUM_DASK_WORKERS
+          value: "{{ .Values.workerETL.nworkers }}"
+        volumeMounts:
+        - name: user-repo
+          mountPath: {{ .Values.controller.userRepoMountPath }}
+        - name: cerebro-hyperparamter-storage
+          mountPath: {{ .Values.workerETL.hyperparameterMountPath }}
+        - name: cerebro-data-storage-worker
+          mountPath: {{ .Values.workerETL.dataMountPath }}
+        - name: cerebro-checkpoint-storage
+          mountPath: {{ .Values.workerETL.checkpointMountPath }}
+        - name: cerebro-controller-storage
+          mountPath: {{ .Values.workerETL.controllerDataMountPath }}
+        ports:
+        - containerPort: {{ .Values.workerETL.workerContainerPort }}
+      imagePullSecrets:
+      - name: regcred
+      volumes:
+      - name: user-repo
+        hostPath:
+          path: {{ .Values.controller.userRepoHostPath }}
+          type: Directory
+      - name: cerebro-hyperparamter-storage
+        configMap:
+          name: hyperparameter-properties
+      - name: cerebro-data-storage-worker
+        hostPath:
+          path: /mnt/cerebro_data_storage_worker
+          type: DirectoryOrCreate
+      - name: cerebro-checkpoint-storage
+        persistentVolumeClaim:
+          claimName: cerebro-checkpoint-pvc
+      - name: cerebro-controller-storage
+        persistentVolumeClaim:
+          claimName: cerebro-data-pvc
+      - name: git-secret
+        secret:
+          defaultMode: 256
+          secretName: git-creds # your-ssh-key
