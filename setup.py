@@ -623,40 +623,41 @@ class CerebroInstaller:
         self.conn.close()
 
     def clean_up(self):
+
+        def run_cmd(handle, cmd, err_msg):
+            try:
+                handle(cmd)
+            except Exception as e:
+                print(err_msg, str(e))
+
+        # clean up controller
         home = str(Path.home())
-        # try:
-        #     cmd1 = "helm delete controller"
-        #     cmd2 = "sudo rm -rf {home}/cerebro-controller {home}/cerebro-repo {home}/user-repo".format(home=home)
-        #     self.conn.run(cmd1)
-        #     self.conn.sudo(cmd2)
-        #     print("Controller clean up done!")
-        # except Exception as e:
-        #     print("Cleaning up controller failed: ", str(e))
+        cmd1 = "helm delete controller"
+        cmd2 = "sudo rm -rf {home}/cerebro-controller {home}/cerebro-repo {home}/user-repo".format(home=home)
+        run_cmd(self.conn.run, cmd1, "Cleaning up controller failed: ")
+        run_cmd(self.conn.run, cmd2, "Cleaning up controller failed: ")
+        print("Controller clean up done!")
 
-        try:
-            s = " ".join(["worker-etl-"+str(i) for i in range(1, self.w-1)])
-            cmd1 = "helm delete " + s
-            s = " ".join(["worker-mop-"+str(i) for i in range(1, self.w-1)])
-            cmd2 = "helm delete " + s
-            cmd3 = "sudo rm -rf {}/cerebro-worker-etl".format(home)
-            cmd4 = "sudo rm -rf {}/user-repo".format(home)
+        # clean up workers
+        s = " ".join(["worker-etl-"+str(i) for i in range(1, self.w-1)])
+        cmd1 = "helm delete " + s
+        s = " ".join(["worker-mop-"+str(i) for i in range(1, self.w-1)])
+        cmd2 = "helm delete " + s
+        cmd3 = "sudo rm -rf {}/cerebro-worker-etl".format(home)
+        cmd4 = "sudo rm -rf {}/user-repo".format(home)
 
-            self.conn.run(cmd1) 
-            self.conn.run(cmd2) 
-            self.conn.sudo(cmd3)
-            self.s.sudo(cmd4)
-            print("Worker clean up done!")
-        except Exception as e:
-            print("Cleaning up workers failed: ", str(e))    
-
-        try:
-            cmd1 = "mkdir -p {}/cerebro-repo".format(home)
-            cmd2 = "mkdir -p {}/user-repo".format(home)
-            self.conn.run(cmd1)
-            self.conn.run(cmd2)
-            print("Post clean up done!")
-        except Exception as e:
-            print("Post clean up failed: ", str(e))
+        run_cmd(self.conn.run, cmd1, "Cleaning up workers failed: ")
+        run_cmd(self.conn.run, cmd2, "Cleaning up workers failed: ")
+        run_cmd(self.conn.sudo, cmd3, "Cleaning up workers failed: ")
+        run_cmd(self.s.sudo, cmd4, "Cleaning up workers failed: ")
+        print("Worker clean up done!")
+        
+        # post clean up
+        cmd1 = "mkdir -p {}/cerebro-repo".format(home)
+        cmd2 = "mkdir -p {}/user-repo".format(home)
+        run_cmd(self.conn.run, cmd1, "Post clean up failed: ")
+        run_cmd(self.conn.run, cmd2, "Post clean up failed: ")
+        print("Post clean up done!")
 
 def main():
     root_path = "/users/{}/cerebro-kube-setup"
@@ -686,8 +687,8 @@ def main():
             installer.kubernetes_join_workers()
             time.sleep(5)
         elif args.cmd == "installcerebro":
-            installer.init_cerebro_kube()
-            time.sleep(3)
+            # installer.init_cerebro_kube()
+            # time.sleep(3)
             installer.install_controller()
             installer.install_worker()
         elif args.cmd == "downloadcoco":
