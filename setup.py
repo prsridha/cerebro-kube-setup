@@ -274,7 +274,7 @@ class CerebroInstaller:
             "kubectl create namespace prom-metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
             "helm repo update",
-            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --set nodeSelector.'cerebro/nodename'={}".format(
+            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --version 30.1.0 --set nodeSelector.'cerebro/nodename'={}".format(
                 node)
         ]
 
@@ -566,8 +566,6 @@ class CerebroInstaller:
         cmd = "kubectl exec -t {} -- pip install -v -e /user-repo/coco-mop"
         for pod in pods:
             self.conn.run(cmd.format(pod))
-
-        #TODO: need to check dask worker numbers
 
     def download_coco(self):
         from fabric2 import ThreadingGroup, Connection
