@@ -19,7 +19,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-port-forward
+  name: cerebro-controller-port-forward-jupyter
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
@@ -30,4 +30,20 @@ spec:
   ports:
     - port: {{ .Values.controller.jupyterPort }}
       targetPort: {{ .Values.controller.jupyterPort }}
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cerebro-controller-port-forward-dask
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-controller-svc
+    serviceApp: dask
+spec:
+  selector:
+    app: cerebro-controller
+  ports:
+    - port: {{ .Values.controller.daskDashboardPort }}
+      targetPort: {{ .Values.controller.daskDashboardPort }}
   type: NodePort

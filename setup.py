@@ -526,6 +526,30 @@ class CerebroInstaller:
             yaml.safe_dump(values_yaml, yamlfile)
 
         print("cerebro-controller's IP: ", controller_ip)
+        
+        # add Dask Dashboard info to references
+        
+        namespace = "cerebro"
+        label = "serviceApp=dask"
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        jupyter_svc = v1.list_namespaced_service(
+            namespace, label_selector=label, watch=False)
+        jupyter_svc = jupyter_svc.items[0]
+        node_port = jupyter_svc.spec.ports[0].node_port
+        
+        daskDashboardPort = values_yaml["controller"]["daskDashboardPort"]
+
+        user_pf_command = "ssh -N -L {}:localhost:{} {}@cloudlab_host_name".format(
+            daskDashboardPort, node_port, self.username)
+        s = "Run this command on your local machine to access the Dask Dashboard : \n{}".format(
+            user_pf_command) + "\n" + "http://localhost:{}".format(daskDashboardPort)
+        
+        print(s)
+        home = str(Path.home())
+        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
+        with open(home + "/reference/dask_dashboard_command.txt".format(self.root_path), "w+") as f:
+            f.write(s)
 
     def copy_module(self):
         from kubernetes import client, config
