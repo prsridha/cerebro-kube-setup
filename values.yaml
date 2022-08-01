@@ -8,13 +8,14 @@ controller:
   configCapacity: 100Mi
   configHostPath: /cerebro-config
   configMountPath: /data/cerebro_config_storage
+  daskDashboardPort: 8787
+  daskPort: 8786
   dataCapacity: 50Gi
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
   gitSyncImage: prsridha/git-sync
   hyperparameterMountPath: /data/hyperparameter_properties
   image: prsridha/cerebro-base:latest
-  daskPort: 8786
   jupyterPort: 8888
   jupyterUserPort: 9999
   propertiesMountPath: /data/cerebro_properties
@@ -29,7 +30,7 @@ creds:
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.107.54.200
+  ip: 10.107.247.205
 workerETL:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
@@ -39,7 +40,7 @@ workerETL:
   hyperparameterMountPath: /data/hyperparameter_properties
   nworkers: 16
   port: 8787
-  schedulerIP: 10.101.88.146
+  schedulerIP: 10.101.220.19
   workerContainerPort: 8787
   workerImage: prsridha/cerebro-kube:latest
 workerMOP:
