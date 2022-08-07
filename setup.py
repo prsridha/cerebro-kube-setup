@@ -639,7 +639,7 @@ class CerebroInstaller:
 
     def testing(self):
         pass
-
+        
     def close(self):
         self.s.close()
         self.conn.close()
@@ -667,7 +667,7 @@ class CerebroInstaller:
         s = " ".join(["worker-mop-"+str(i) for i in range(1, self.w-1)])
         cmd2 = "helm delete " + s
         cmd3 = "sudo rm -rf {}/cerebro-worker-etl".format(home)
-        cmd4 = "sudo rm -rf {}/user-repo".format(home)
+        cmd4 = "sudo rm -rf {}/cerebro-worker-mop".format(home)
 
         run_cmd(self.conn.run, cmd1, "Cleaning up workers failed: ")
         run_cmd(self.conn.run, cmd2, "Cleaning up workers failed: ")
