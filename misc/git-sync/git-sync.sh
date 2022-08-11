@@ -19,9 +19,9 @@ mkdir -p $GIT_SYNC_ROOT
 cd $GIT_SYNC_ROOT
 if [ -z "$(ls -A $GIT_SYNC_ROOT)" ]; then
    if [ -z "${GIT_SYNC_BRANCH}" ]; then
-      git clone $GIT_SYNC_REPO -b $GIT_SYNC_BRANCH
-   else
       git clone $GIT_SYNC_REPO
+   else
+      git clone $GIT_SYNC_REPO -b $GIT_SYNC_BRANCH
    fi
 else
    echo "Directory not empty, skipping git clone"
