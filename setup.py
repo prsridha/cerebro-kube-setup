@@ -424,7 +424,7 @@ class CerebroInstaller:
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
 
-        time.sleep(5)
+        time.sleep(15)
 
         # add all permissions to repos
         cmd1 = "sudo chmod -R 777 ~/cerebro-repo/cerebro-kube"
