@@ -466,7 +466,7 @@ class CerebroInstaller:
             time.sleep(1)
 
         print("ETL-Workers created successfully")
-        
+
         cmds = [
             "helm create ~/cerebro-worker-mop".format(self.root_path),
             "rm -rf ~/cerebro-worker-mop/templates/*".format(self.root_path),
@@ -669,7 +669,7 @@ class CerebroInstaller:
         cmd2 = "helm delete " + s
         cmd3 = "sudo rm -rf {}/cerebro-worker-etl".format(home)
         cmd4 = "sudo rm -rf {}/cerebro-worker-mop".format(home)
-        cmd5 = "sudo rm -rf /data/cerebro_data_storage/coco"
+        cmd5 = "sudo rm -rf /mnt/cerebro_data_storage_worker/coco/"
 
         run_cmd(self.conn.run, cmd1, "Cleaning up workers failed: ")
         run_cmd(self.conn.run, cmd2, "Cleaning up workers failed: ")
