@@ -2,6 +2,7 @@ controller:
   cerebroRepoHostPath: /users/prsridha/cerebro-repo
   cerebroRepoMountPath: /cerebro-repo
   cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
+  cerebroRepoBranch: bugfix/etl-redo
   checkpointCapacity: 5Gi
   checkpointHostPath: /cerebro-checkpoint
   checkpointMountPath: /data/cerebro_checkpoint_storage
@@ -30,7 +31,7 @@ creds:
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.107.247.205
+  ip: 10.106.226.32
 workerETL:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
@@ -40,7 +41,7 @@ workerETL:
   hyperparameterMountPath: /data/hyperparameter_properties
   nworkers: 16
   port: 8787
-  schedulerIP: 10.101.220.19
+  schedulerIP: 10.97.81.73
   workerContainerPort: 8787
   workerImage: prsridha/cerebro-kube:latest
 workerMOP:
