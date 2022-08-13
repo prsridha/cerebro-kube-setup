@@ -378,6 +378,12 @@ class CerebroInstaller:
 
         controller = get_pod_names(self.kube_namespace)["controller"]
 
+        jyp_check_cmd = "kubectl exec -t {} -- ls".format(controller)
+        ls_out = self.conn.run(jyp_check_cmd).stdout
+        while "JUPYTER_TOKEN" not in ls_out:
+            time.sleep(1)
+            ls_out = self.conn.run(jyp_check_cmd, hide=True).stdout
+            
         cmd = "kubectl exec -t {} -- cat JUPYTER_TOKEN".format(controller)
         jupyter_token = self.conn.run(cmd).stdout
         
@@ -424,7 +430,7 @@ class CerebroInstaller:
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
 
-        time.sleep(15)
+        time.sleep(5)
 
         # add all permissions to repos
         cmd1 = "sudo chmod -R 777 ~/cerebro-repo/cerebro-kube"
