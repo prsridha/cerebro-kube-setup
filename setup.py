@@ -456,8 +456,8 @@ class CerebroInstaller:
         ]
         c = "helm install --namespace={n} worker-etl-{id} ~/cerebro-worker-etl --set workerID={id}"
 
-        # node0 for nfs + metrics
-        # node1 for controller
+        # node0 for controller + metrics
+        # node1 for nfs
         # all other nodes for workers
         for i in range(1, self.w - 1):
             cmds.append(

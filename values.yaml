@@ -2,16 +2,16 @@ controller:
   cerebroRepoHostPath: /users/prsridha/cerebro-repo
   cerebroRepoMountPath: /cerebro-repo
   cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
-  cerebroRepoBranch: bugfix/etl-redo
-  checkpointCapacity: 5Gi
+  cerebroRepoBranch: main
+  checkpointCapacity: 50Gi
   checkpointHostPath: /cerebro-checkpoint
   checkpointMountPath: /data/cerebro_checkpoint_storage
-  configCapacity: 100Mi
+  configCapacity: 500Mi
   configHostPath: /cerebro-config
   configMountPath: /data/cerebro_config_storage
   daskDashboardPort: 8787
   daskPort: 8786
-  dataCapacity: 50Gi
+  dataCapacity: 100Gi
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
   gitSyncImage: prsridha/git-sync
@@ -27,16 +27,16 @@ creds:
   dockerToken: b9cdaf75-996d-48b1-be51-a0bfba41d59f
   dockerUser: prsridha
   gitServer: github.com
-  gitToken: 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
+  gitToken: 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
 namespace: cerebro
 nfs:
-  capacity: 50Gi
+  capacity: 300Gi
   ip: 10.106.226.32
 workerETL:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
   controllerDataMountPath: /data/cerebro_data_storage
-  dataCapacity: 10Gi
+  dataCapacity: 100Gi
   dataMountPath: /data/cerebro_data_storage_worker
   hyperparameterMountPath: /data/hyperparameter_properties
   nworkers: 16
@@ -48,7 +48,7 @@ workerMOP:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
   controllerDataMountPath: /data/cerebro_data_storage
-  dataCapacity: 10Gi
+  dataCapacity: 100Gi
   dataMountPath: /data/cerebro_data_storage_worker
   hyperparameterMountPath: /data/hyperparameter_properties
   rcpport: 7777
