@@ -677,12 +677,16 @@ class CerebroInstaller:
         cmd3 = "sudo rm -rf {}/cerebro-worker-etl".format(home)
         cmd4 = "sudo rm -rf {}/cerebro-worker-mop".format(home)
         cmd5 = "sudo rm -rf /mnt/cerebro_data_storage_worker/coco/"
+        cmd6 = "sudo rm -rf /users/prsridha/cerebro-repo"
+        cmd7 = "sudo rm -rf /users/prsridha/user-repo"
 
         run_cmd(self.conn.run, cmd1, "Cleaning up workers failed: ")
         run_cmd(self.conn.run, cmd2, "Cleaning up workers failed: ")
         run_cmd(self.conn.sudo, cmd3, "Cleaning up workers failed: ")
         run_cmd(self.conn.sudo, cmd4, "Cleaning up workers failed: ")
         run_cmd(self.s.sudo, cmd5, "Cleaning up workers failed: ")
+        run_cmd(self.s.sudo, cmd6, "Cleaning up workers failed: ")
+        run_cmd(self.s.sudo, cmd7, "Cleaning up workers failed: ")
         print("Worker clean up done!")
         
         # post clean up
