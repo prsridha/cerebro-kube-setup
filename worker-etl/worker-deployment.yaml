@@ -73,6 +73,7 @@ spec:
         image: {{ .Values.controller.image }}
         imagePullPolicy: Always
         command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        workingDir: /cerebro-repo/cerebro-kube
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
