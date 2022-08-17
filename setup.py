@@ -447,6 +447,7 @@ class CerebroInstaller:
         from kubernetes import client, config
 
         self.s.run("mkdir -p ~/user-repo")
+        self.s.run("mkdir -p ~/cerebro-repo")
 
         cmds = [
             "helm create ~/cerebro-worker-etl".format(self.root_path),
