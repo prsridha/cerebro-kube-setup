@@ -644,9 +644,13 @@ class CerebroInstaller:
             except:
                 print("Failed to delete in worker" + str(i-1))
 
+    def stop_etl_workers(self):
+        s = ["cerebro-worker-etl-" + str(i) for i in range(1, self.w)]
+        print(s)
+
     def testing(self):
         pass
-        
+
     def close(self):
         self.s.close()
         self.conn.close()
@@ -707,14 +711,16 @@ def main():
         "cerebro_worker_data_hostpath": "/exports/cerebro-data-{}"
     }
 
+    cmd = "cat /etc/hosts | grep node | wc -l"
+    out = subprocess.getoutput(cmd)
+    num_workers = int(out)
+
     parser = ArgumentParser()
     parser.add_argument("cmd", help="install dependencies")
-    parser.add_argument("-w", "--workers", dest="workers", type=int, required=True,
-                        help="number of workers")
 
     args = parser.parse_args()
 
-    installer = CerebroInstaller(root_path, args.workers, kube_params)
+    installer = CerebroInstaller(root_path, num_workers, kube_params)
     if args.cmd == "installkube":
         installer.init()
         installer.kubernetes_install()
@@ -728,6 +734,8 @@ def main():
             time.sleep(3)
             installer.install_controller()
             installer.install_worker()
+        elif args.cmd == "stopetlworkers":
+            installer.stop_etl_workers()
         elif args.cmd == "downloadcoco":
             installer.download_coco()
         elif args.cmd == "metricsmonitor":
