@@ -114,6 +114,8 @@ class CerebroInstaller:
 
         import_or_install("fabric2")
         import_or_install("dask[complete]")
+        import_or_install("flask")
+        
         subprocess.call(
             ["bash", "{}/misc/path.sh".format(self.root_path)])
 
@@ -623,11 +625,6 @@ class CerebroInstaller:
 
         conn.close()
 
-        # ssh-keygen
-        # cat ~/.ssh/id_rsa.pub
-        # nano ~/.ssh/authorized_keys
-        # chmod 777 .
-
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
 
@@ -643,10 +640,6 @@ class CerebroInstaller:
                 conn.close()
             except:
                 print("Failed to delete in worker" + str(i-1))
-
-    def stop_etl_workers(self):
-        s = ["cerebro-worker-etl-" + str(i) for i in range(1, self.w)]
-        print(s)
 
     def testing(self):
         pass
@@ -699,6 +692,10 @@ class CerebroInstaller:
         run_cmd(self.conn.run, cmd1, "Post clean up failed: ")
         run_cmd(self.conn.run, cmd2, "Post clean up failed: ")
         print("Post clean up done!")
+        
+    def start_server(self):
+        cmd = "python3 setup_server.py"
+        subprocess.run(cmd.split(" "), shell=True, check=True)
 
 def main():
     root_path = "/users/{}/cerebro-kube-setup"
@@ -734,8 +731,8 @@ def main():
             time.sleep(3)
             installer.install_controller()
             installer.install_worker()
-        elif args.cmd == "stopetlworkers":
-            installer.stop_etl_workers()
+        elif args.cmd == "server":
+            installer.start_server()
         elif args.cmd == "downloadcoco":
             installer.download_coco()
         elif args.cmd == "metricsmonitor":
