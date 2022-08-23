@@ -1,6 +1,6 @@
 # Worker Deployment
 apiVersion: apps/v1
-kind: Deployment
+kind: Job
 metadata:
   name: cerebro-worker-etl-{{ .Values.workerID }}
   namespace: {{ .Release.Namespace }}
