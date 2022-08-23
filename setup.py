@@ -511,7 +511,7 @@ class CerebroInstaller:
             f.write(
                 "Model Hopper Worker IPs:\n")
             f.write("\n".join(ips))
-
+            f.write(str(ips))
         print("Created the workers")
 
     def add_dask_meta(self):
