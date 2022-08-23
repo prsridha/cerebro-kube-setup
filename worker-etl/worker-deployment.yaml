@@ -1,15 +1,10 @@
 # Worker Deployment
-apiVersion: apps/v1
+apiVersion: batch/v1
 kind: Job
 metadata:
   name: cerebro-worker-etl-{{ .Values.workerID }}
   namespace: {{ .Release.Namespace }}
 spec:
-  selector:
-    matchLabels:
-      app: cerebro-worker-etl-{{ .Values.workerID }}
-      type: cerebro-worker-etl
-  replicas: 1
   template:
     metadata:
       labels:
