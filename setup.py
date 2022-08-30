@@ -617,11 +617,8 @@ class CerebroInstaller:
             # "unzip -d /mnt/temp/coco/ /mnt/temp/val2014.zip",
             # "unzip -d /mnt/temp/coco/ /mnt/temp/train2014.zip",
             
-            print("Removing existing files...")
             "rm -rf /mnt/nfs/cerebro-data/coco",
             "mkdir -p /mnt/nfs/cerebro-data/coco",
-            
-            print("Re-copying files...")
             "cp -r /mnt/temp/coco /mnt/nfs/cerebro-data/"
         ]
 
