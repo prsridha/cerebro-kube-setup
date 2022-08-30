@@ -609,13 +609,17 @@ class CerebroInstaller:
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
 
         cmds = [
-            # "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/val2014.zip",
-            # "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
-            # "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/train2014.zip",
-            "mkdir /mnt/nfs/cerebro-data/coco",
-            "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/annotations_trainval2014.zip",
-            "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/val2014.zip",
-            "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/train2014.zip"
+            # "mkdir -p /mnt/temp/coco",
+            # "wget -P /mnt/temp/ http://images.cocodataset.org/zips/val2014.zip",
+            # "wget -P /mnt/temp/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
+            # "wget -P /mnt/temp/ http://images.cocodataset.org/zips/train2014.zip",
+            # "unzip -d /mnt/temp/coco/ /mnt/temp/annotations_trainval2014.zip",
+            # "unzip -d /mnt/temp/coco/ /mnt/temp/val2014.zip",
+            # "unzip -d /mnt/temp/coco/ /mnt/temp/train2014.zip",
+
+            "rm -rf /mnt/nfs/cerebro-data/coco",
+            "mkdir -p /mnt/nfs/cerebro-data/coco",
+            "cp -r /mnt/temp/coco /mnt/nfs/cerebro-data/coco"
         ]
 
         for cmd in cmds:
