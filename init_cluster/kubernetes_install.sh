@@ -78,4 +78,3 @@ sudo apt-get install dtach
 
 ## untaint control-plane
 kubectl taint nodes $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
-kubectl taint nodes $(hostname) node-role.kubernetes.io/master:NoSchedule-
