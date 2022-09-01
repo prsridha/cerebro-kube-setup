@@ -610,12 +610,13 @@ class CerebroInstaller:
 
         cmds = [
             # "mkdir -p /mnt/temp/coco",
-            # "wget -P /mnt/temp/ http://images.cocodataset.org/zips/val2014.zip",
-            # "wget -P /mnt/temp/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
-            # "wget -P /mnt/temp/ http://images.cocodataset.org/zips/train2014.zip",
-            # "unzip -d /mnt/temp/coco/ /mnt/temp/annotations_trainval2014.zip",
-            # "unzip -d /mnt/temp/coco/ /mnt/temp/val2014.zip",
-            # "unzip -d /mnt/temp/coco/ /mnt/temp/train2014.zip",
+            # "wget -P /mnt/temp/ http://images.cocodataset.org/zips/train2017.zip",
+            # "wget -P /mnt/temp/ http://images.cocodataset.org/zips/val2017.zip",
+            # "wget -P /mnt/temp/ http://images.cocodataset.org/zips/test2017.zip",
+            # "wget -P /mnt/temp/ http://images.cocodataset.org/annotations/annotations_trainval2017.zip",
+            # "unzip -d /mnt/temp/coco/ /mnt/temp/annotations_trainval2017.zip",
+            # "unzip -d /mnt/temp/coco/ /mnt/temp/val2017.zip",
+            # "unzip -d /mnt/temp/coco/ /mnt/temp/train2017.zip",
             
             "rm -rf /mnt/nfs/cerebro-data/coco",
             "mkdir -p /mnt/nfs/cerebro-data/coco",
