@@ -84,6 +84,8 @@ spec:
         env:
         - name: POD_TYPE
           value: "controller"
+        - name: ML_METRICS_LOGDIR
+          value: "/data/cerebro_checkpoint_storage/metrics"
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
