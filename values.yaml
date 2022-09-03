@@ -11,6 +11,7 @@ controller:
   configMountPath: /data/cerebro_config_storage
   daskDashboardPort: 8787
   daskPort: 8786
+  tensorboardPort: 6006
   dataCapacity: 100Gi
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage

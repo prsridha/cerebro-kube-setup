@@ -35,6 +35,22 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: cerebro-controller-port-forward-tensorboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-controller-svc
+    serviceApp: tensorboard
+spec:
+  selector:
+    app: cerebro-controller
+  ports:
+    - port: {{ .Values.controller.tensorboardPort }}
+      targetPort: {{ .Values.controller.tensorboardPort }}
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: cerebro-controller-port-forward-dask
   namespace: {{ .Release.Namespace }}
   labels:

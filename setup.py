@@ -407,6 +407,30 @@ class CerebroInstaller:
         Path(home + "/reference").mkdir(parents=True, exist_ok=True)
         with open(home + "/reference/jupyter_command.txt".format(self.root_path), "w+") as f:
             f.write(s)
+            
+            
+        # add tensorboard port
+        
+        namespace = "cerebro"
+        label = "serviceApp=tensorboard"
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        names = []
+        tensorboard_svc = v1.list_namespaced_service(
+            namespace, label_selector=label, watch=False)
+        tensorboard_svc = tensorboard_svc.items[0]
+        node_port = tensorboard_svc.spec.ports[0].node_port
+
+        user_pf_command = "ssh -N -L {}:localhost:{} {}@cloudlab_host_name".format(
+            users_port, node_port, self.username)
+        s = "Run this command on your local machine to access Tensorboard Dashboard : \n{}".format(
+            user_pf_command) + "\n" + "http://localhost:{}".format(users_port)
+        
+        print(s)
+        home = str(Path.home())
+        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
+        with open(home + "/reference/tensorboard_command.txt".format(self.root_path), "w+") as f:
+            f.write(s)
 
     def install_controller(self):
         from kubernetes import client, config

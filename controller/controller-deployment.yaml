@@ -108,6 +108,8 @@ spec:
           name: dask-port
         - containerPort: {{ .Values.controller.jupyterPort }}
           name: jupyter-port
+        - containerPort: {{ .Values.controller.tensorboardPort }}
+          name: tensorboard-port
       imagePullSecrets:
       - name: regcred
       volumes:
