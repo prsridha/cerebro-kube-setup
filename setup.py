@@ -410,7 +410,7 @@ class CerebroInstaller:
             
             
         # add tensorboard port
-        
+        users_port = values_yaml["controller"]["tensorboardPort"]
         namespace = "cerebro"
         label = "serviceApp=tensorboard"
         config.load_kube_config()
