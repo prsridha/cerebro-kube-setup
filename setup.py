@@ -681,6 +681,8 @@ class CerebroInstaller:
         self.conn.close()
 
     def clean_up(self):
+        from fabric2 import ThreadingGroup, Connection
+        
         home = str(Path.home())
         
         def run_cmd(handle, cmd, err_msg):
@@ -724,6 +726,18 @@ class CerebroInstaller:
         run_cmd(self.conn.run, cmd1, "Post clean up failed: ")
         run_cmd(self.conn.run, cmd2, "Post clean up failed: ")
         print("Post clean up done!")
+        
+        host = "node1"
+        user = self.username
+        pem_path = "/users/{}/cloudlab.pem".format(self.username)
+        connect_kwargs = {"key_filename": pem_path}
+        
+        conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
+        try:
+            conn.sudo("rm -rf /mnt/nfs/cerebro-checkpoint/*")
+            conn.close()
+        except:
+            print("Failed to Cerebro Checkpoints" + str(i-1))
 
 def main():
     root_path = "/users/{}/cerebro-kube-setup"
