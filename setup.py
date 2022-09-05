@@ -737,7 +737,7 @@ class CerebroInstaller:
             conn.sudo("rm -rf /mnt/nfs/cerebro-checkpoint/*")
             conn.close()
         except:
-            print("Failed to Cerebro Checkpoints" + str(i-1))
+            print("Failed to clear Cerebro Checkpoints")
 
 def main():
     root_path = "/users/{}/cerebro-kube-setup"
