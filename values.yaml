@@ -33,6 +33,13 @@ namespace: cerebro
 nfs:
   capacity: 300Gi
   ip: 10.106.226.32
+cluster:
+  name: cerebro-kube-1
+  workers: 4
+  region: ap-south-1
+  controllerInstance: t3.medium
+  workerInstance: t3.large
+  volumeSize: 80
 workerETL:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
