@@ -30,9 +30,9 @@ creds:
   gitServer: github.com
   gitToken: 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
 namespace: cerebro
-nfs:
+efs:
   capacity: 300Gi
-  ip: 10.106.226.32
+  fsID: fs-0310a380e7ba457d3
 cluster:
   name: cerebro-kube-1
   workers: 4
