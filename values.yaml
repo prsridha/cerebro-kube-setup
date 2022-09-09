@@ -1,63 +1,55 @@
 controller:
-  cerebroRepoHostPath: /users/prsridha/cerebro-repo
-  cerebroRepoMountPath: /cerebro-repo
-  cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
-  cerebroRepoBranch: main
-  checkpointCapacity: 50Gi
-  checkpointHostPath: /cerebro-checkpoint
-  checkpointMountPath: /data/cerebro_checkpoint_storage
-  configCapacity: 500Mi
-  configHostPath: /cerebro-config
-  configMountPath: /data/cerebro_config_storage
-  daskDashboardPort: 8787
-  daskPort: 8786
-  tensorboardPort: 6006
-  dataCapacity: 100Gi
-  dataHostPath: /cerebro-data
-  dataMountPath: /data/cerebro_data_storage
-  gitSyncImage: prsridha/git-sync
-  hyperparameterMountPath: /data/hyperparameter_properties
-  image: prsridha/cerebro-base:latest
-  jupyterPort: 8888
-  jupyterUserPort: 9999
-  propertiesMountPath: /data/cerebro_properties
-  userRepoHostPath: /users/prsridha/user-repo
-  userRepoMountPath: /user-repo
-  userRepoURL: git@github.com:prsridha/coco-mop.git
+  volumes:
+    configCapacity: 500Mi
+    configMountPath: /data/cerebro_config_storage
+    checkpointCapacity: 20Gi
+    checkpointMountPath: /data/cerebro_checkpoint_storage
+    metricsCapacity: 5Gi
+    metricsMountPath: /data/cerebro_metrics_storage
+    dataCapacity: 50Gi
+    dataMountPath: /data/cerebro_data_storage
+    cerebroRepoHostPath: /home/ec2-user/cerebro-repo
+    cerebroRepoMountPath: /cerebro-repo
+    userRepoHostPath: /home/ec2-user/user-repo
+    userRepoMountPath: /user-repo
+  git:
+    cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
+    cerebroRepoBranch: main
+    userRepoURL: git@github.com:prsridha/coco-mop.git
+    gitSyncImage: prsridha/git-sync
+    image: prsridha/cerebro-base:latest
+  services:
+    daskDashboardPort: 8787
+    daskPort: 8786
+    tensorboardPort: 6006
+    jupyterPort: 8888
+    jupyterUserPort: 9999
 creds:
   dockerToken: b9cdaf75-996d-48b1-be51-a0bfba41d59f
   dockerUser: prsridha
   gitServer: github.com
   gitToken: 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
 namespace: cerebro
-efs:
-  capacity: 300Gi
-  fsID: fs-0310a380e7ba457d3
 cluster:
-  name: cerebro-kube-1
+  name: cerebro-kube-2
   workers: 4
   region: ap-south-1
   controllerInstance: t3.medium
   workerInstance: t3.large
   volumeSize: 80
+  efsFileSystemID: fs-0f2da31525e0b3568
 workerETL:
-  checkpointMountPath: /data/cerebro_checkpoint_storage
-  controllerDataHostPath: /cerebro-data
-  controllerDataMountPath: /data/cerebro_data_storage
-  dataCapacity: 100Gi
-  dataMountPath: /data/cerebro_data_storage_worker
-  hyperparameterMountPath: /data/hyperparameter_properties
+  checkpointPath: /data/cerebro_checkpoint_storage
+  controllerDataPath: /data/cerebro_data_storage
+  workerDataPath: /cerebro_data_storage_worker
   nworkers: 16
   port: 8787
   schedulerIP: 10.97.81.73
   workerContainerPort: 8787
   workerImage: prsridha/cerebro-kube:latest
 workerMOP:
-  checkpointMountPath: /data/cerebro_checkpoint_storage
-  controllerDataHostPath: /cerebro-data
-  controllerDataMountPath: /data/cerebro_data_storage
-  dataCapacity: 100Gi
-  dataMountPath: /data/cerebro_data_storage_worker
-  hyperparameterMountPath: /data/hyperparameter_properties
+  checkpointPath: /data/cerebro_checkpoint_storage
+  controllerDataPath: /data/cerebro_data_storage
+  workerDataPath: /cerebro_data_storage_worker
   rcpport: 7777
   workerImage: prsridha/cerebro-kube:latest

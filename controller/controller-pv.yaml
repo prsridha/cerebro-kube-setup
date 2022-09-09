@@ -9,32 +9,15 @@ metadata:
     name: cerebro-checkpoint-pv
 spec:
   capacity:
-    storage: {{ .Values.controller.checkpointCapacity }}
+    storage: {{ .Values.controller.volumes.checkpointCapacity }}
   accessModes:
     - ReadWriteMany
     - ReadWriteOnce
-  nfs:
-    server: {{ .Values.nfs.ip }}
-    path: {{ .Values.controller.checkpointHostPath }}
-  persistentVolumeReclaimPolicy: Recycle
----
-# Config Volume
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: cerebro-config-pv
-  labels:
-    name: cerebro-config-pv
-spec:
-  capacity:
-    storage: {{ .Values.controller.configCapacity }}
-  accessModes:
-    - ReadWriteOnce
-    - ReadWriteMany
-  nfs:
-    server: {{ .Values.nfs.ip }}
-    path: {{ .Values.controller.configHostPath }}
-  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: efs-sc
+  persistentVolumeReclaimPolicy: Delete
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: {{ .Values.cluster.efsFileSystemID }}
 ---
 # Data Volume
 apiVersion: v1
@@ -45,11 +28,50 @@ metadata:
     name: cerebro-data-pv
 spec:
   capacity:
-    storage: {{ .Values.controller.dataCapacity }}
+    storage: {{ .Values.controller.volumes.dataCapacity }}
   accessModes:
     - ReadWriteOnce
     - ReadWriteMany
-  nfs:
-    server: {{ .Values.nfs.ip }}
-    path: {{ .Values.controller.dataHostPath }}
-  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: efs-sc
+  persistentVolumeReclaimPolicy: Delete
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: {{ .Values.cluster.efsFileSystemID }}
+---
+# Config Volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cerebro-config-pv
+  labels:
+    name: cerebro-config-pv
+spec:
+  capacity:
+    storage: {{ .Values.controller.volumes.configCapacity }}
+  accessModes:
+    - ReadWriteOnce
+    - ReadWriteMany
+  storageClassName: efs-sc
+  persistentVolumeReclaimPolicy: Delete
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: {{ .Values.cluster.efsFileSystemID }}
+---
+# Metrics Volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cerebro-metrics-pv
+  labels:
+    name: cerebro-metrics-pv
+spec:
+  capacity:
+    storage: {{ .Values.controller.volumes.metricsCapacity }}
+  accessModes:
+    - ReadWriteOnce
+    - ReadWriteMany
+  storageClassName: efs-sc
+  persistentVolumeReclaimPolicy: Delete
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: {{ .Values.cluster.efsFileSystemID }}

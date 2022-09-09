@@ -1,7 +1,7 @@
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
-  name: cerebro-kube-1
+  name: cerebro-kube-2
   region: ap-south-1
 managedNodeGroups:
 - name: ng-controller
@@ -13,6 +13,8 @@ managedNodeGroups:
   spot: true
   ssh:
     allow: true
+    publicKeyName: cerebro-kube-kp
+    enableSsm: true
 - name: ng-worker
   labels:
     role: worker
@@ -22,3 +24,5 @@ managedNodeGroups:
   spot: true
   ssh:
     allow: true
+    publicKeyName: cerebro-kube-kp
+    enableSsm: true

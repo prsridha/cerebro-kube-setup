@@ -1,10 +1,19 @@
+import os
 import json
-from logging import exception
 import time
+import fire
 import subprocess
 import oyaml as yaml
 from pathlib import Path
-from argparse import ArgumentParser
+from kubernetes import client, config
+
+## Prerequisites
+# Create an IAM user with Admin permissions + Access Key - Programmatic access. Save the .csv cred file
+# Install aws cli on local and configure it using the downloaded cred file
+# Install eksctl CLI
+# Create a key-pair on EC2 with name cerebro-kube-kp
+
+
 
 def run(cmd, shell=True, capture_output=True, text=True):
     try:
@@ -18,14 +27,16 @@ def run(cmd, shell=True, capture_output=True, text=True):
 
 class CerebroInstaller:
     def __init__(self):
+        self.home = "/Users/pradsrid/Mine/Masters/Research/Cerebro/cerebro-kube-setup"
         self.values_yaml = None
+        self.kube_namespace = "cerebro"
         
         with open('values.yaml', 'r') as yamlfile:
             self.values_yaml = yaml.safe_load(yamlfile)
             
         self.num_workers = self.values_yaml["cluster"]["workers"]
         
-    def create_eks_cluster(self):
+    def createCluster(self):
         from datetime import timedelta
          
         with open("init_cluster/eks_cluster.yaml", 'r') as yamlfile:
@@ -53,7 +64,7 @@ class CerebroInstaller:
             print("Couldn't create the cluster")
             print(str(e))
     
-    def add_efs_storage(self):
+    def addStorage(self):
         region = self.values_yaml["cluster"]["region"]
         
         # get cluster name
@@ -74,22 +85,19 @@ class CerebroInstaller:
         
         # create security group for inbound NFS traffic
         cmd4 = 'aws ec2 create-security-group --group-name efs-nfs-sg --description "Allow NFS traffic for EFS" --vpc-id {}'.format(vpc_id)
-        # out = run(cmd4)
-        out = """ {
-            "GroupId": "sg-06e1854f9adb3ec78"
-        } """
+        out = run(cmd4)
         sg_id = json.loads(out)["GroupId"]
         print("Created security group")
         print(sg_id)
         
         # add rules to the security group
         cmd5 = 'aws ec2 authorize-security-group-ingress --group-id {} --protocol tcp --port 2049 --cidr {}'.format(sg_id, cidr_range)
-        # out = run(cmd5)
+        out = run(cmd5)
         print("Added ingress rules to security group")
         
         # create the AWS EFS File System (unencrypted)
         cmd6 = "aws efs create-file-system --region {}".format(region)
-        # out = run(cmd6)
+        out = run(cmd6)
         print("Created EFS file system")
         # get file system id
         cmd7 = "aws efs describe-file-systems"
@@ -112,12 +120,12 @@ class CerebroInstaller:
             --subnet-id $subnet \
             --region {}
         done""".format(" ".join(subnets_list), file_sys_id, sg_id, region)
-        # out = run(cmd9)
+        out = run(cmd9)
         print("Created mount target for subnets")
 
         # install the EFS CSI driver
         cmd10 = 'kubectl apply -k "github.com/kubernetes-sigs/aws-efs-csi-driver/deploy/kubernetes/overlays/dev/?ref=master"'
-        # out = run(cmd10)
+        out = run(cmd10)
         cmd11 = "kubectl get csidrivers.storage.k8s.io"
         out = run(cmd11)
         print(out)
@@ -125,35 +133,110 @@ class CerebroInstaller:
         
         # create storageclass
         cmd12 = "kubectl apply -f ./init_cluster/storage_class.yaml"
-        # out = run(cmd12)
+        out = run(cmd12)
         cmd13 = "kubectl get sc"
         out = run(cmd13)
         print(out)
         print("Created storage class")
         
         # update file system id to values.yaml
-        self.values_yaml["efs"]["fsID"] = file_sys_id
+        self.values_yaml["cluster"]["efsFileSystemID"] = file_sys_id
         with open("values.yaml", "w") as f:
             yaml.safe_dump(self.values_yaml, f)
         print("Saved FileSystem ID in values.yaml")
+   
+   
+    def installMetricsMonitor(self):
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+
+        node = "node0"
+
+        cmds = [
+            "kubectl create namespace prom-metrics",
+            "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
+            "helm repo update",
+            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --version 30.1.0 --set nodeSelector.'cerebro/nodename'={}".format(
+                node)
+        ]
+
+        for cmd in cmds:
+            run(cmd)
+
+        name = "prom-grafana"
+        ns = "prom-metrics"
+        body = v1.read_namespaced_service(namespace=ns, name=name)
+        body.spec.type = "NodePort"
+        v1.patch_namespaced_service(name, ns, body)
+
+        svc = v1.read_namespaced_service(namespace=ns, name=name)
+        port = svc.spec.ports[0].node_port
+
+        print(
+            "Access Grafana with this link:\nhttp://<AWS Host Name>: {}".format(port))
+        print("username: {}\npassword: {}".format("admin", "prom-operator"))
+
+        home = self.home
+        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
+        with open(home + "/reference/metrics_monitor_credentials.txt", "w+") as f:
+            f.write(
+                "Access Grafana with this link:\nhttp://<AWS Host Name>: {}\n".format(port))
+            f.write("username: {}\npassword: {}".format(
+                "admin", "prom-operator"))
+    
+    def installCerebro(self):
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
         
-    def install_cerebro(self):
-        cmd1 = "kubectl get nodes"
-        out = run(cmd1)
-        print(out)
+        # patch nodes with cerebro/nodename label
+        body = v1.list_node(label_selector="role=controller")
+        body.items[0].metadata.labels["cerebro/nodename"] = "node0"
+        node_name = body.items[0].metadata.name
+        patched_node = body.items[0]
+        
+        # v1.patch_node(node_name, patched_node)
+        print("Patched Controller node:", node_name, "as node0")
+        
+        worker_i = 1
+        bodies = v1.list_node(label_selector="role=worker")
+        for body in bodies.items:
+            body.metadata.labels["cerebro/nodename"] = "node" + str(worker_i)
+            node_name = body.metadata.name
+            patched_node = body
+            # v1.patch_node(node_name, patched_node)
+            print("Patched Worker node:", node_name, "as node" + str(worker_i))
+            worker_i += 1
+        
+        cmds1 = [
+            "kubectl create namespace {}".format(self.kube_namespace),
+            "kubectl config set-context --current --namespace={}".format(
+                self.kube_namespace),
+            "kubectl create -n {} secret generic kube-config --from-file={}".format(
+                self.kube_namespace, os.path.expanduser("~/.kube/config")),
+        ]
+        
+        # for cmd in cmds1:
+        #     out = run(cmd)
+        #     print(out)
+        
+        # install Prometheus and Grafana
+        self.installMetricsMonitor()
+        
+        #TODO: install kube-config
+        
+    def testing(self):
+        pass
+            
+            
+        
+        
+    def deleteCluster(self):
+        try:
+            cmd = "eksctl delete cluster -f ./init_cluster/eks_cluster.yaml"
+            subprocess.run(cmd, shell=True, text=True)
+        except Exception as e:
+            print("Couldn't delete the cluster")
+            print(str(e))
 
-def testing():
-    cmd = "bash ./test.sh"
-    subprocess.run(cmd, shell=True, text=True)
-
-def main():
-    installer = CerebroInstaller()
-    
-    # installer.create_eks_cluster()
-    installer.add_efs_storage()
-    # installer.install_cerebro()
-    
-    # parser = ArgumentParser()
-    # parser.add_argument("cmd", help="install dependencies")
-    
-main()
+if __name__ == '__main__':
+  fire.Fire(CerebroInstaller)

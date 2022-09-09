@@ -8,10 +8,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: ""
+  storageClassName: efs-sc
   resources:
     requests:
-      storage: {{ .Values.controller.checkpointCapacity }}
+      storage: {{ .Values.controller.volumes.checkpointCapacity }}
   selector: 
     matchLabels:
       name: cerebro-checkpoint-pv
@@ -24,10 +24,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: ""
+  storageClassName: efs-sc
   resources:
     requests:
-      storage: {{ .Values.controller.configCapacity }}
+      storage: {{ .Values.controller.volumes.configCapacity }}
   selector: 
     matchLabels:
       name: cerebro-config-pv
@@ -40,10 +40,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: ""
+  storageClassName: efs-sc
   resources:
     requests:
-      storage: {{ .Values.controller.dataCapacity }}
+      storage: {{ .Values.controller.volumes.dataCapacity }}
   selector: 
     matchLabels:
       name: cerebro-data-pv
