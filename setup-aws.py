@@ -64,6 +64,7 @@ class CerebroInstaller:
             print("Couldn't create the cluster")
             print(str(e))
     
+    
     def addStorage(self):
         region = self.values_yaml["cluster"]["region"]
         
@@ -184,6 +185,7 @@ class CerebroInstaller:
             f.write("username: {}\npassword: {}".format(
                 "admin", "prom-operator"))
     
+    
     def installCerebro(self):
         config.load_kube_config()
         v1 = client.CoreV1Api()
@@ -224,19 +226,74 @@ class CerebroInstaller:
         
         #TODO: install kube-config
         
-    def testing(self):
-        pass
-            
-            
-        
-        
     def deleteCluster(self):
-        try:
-            cmd = "eksctl delete cluster -f ./init_cluster/eks_cluster.yaml"
-            subprocess.run(cmd, shell=True, text=True)
-        except Exception as e:
-            print("Couldn't delete the cluster")
-            print(str(e))
+        fs_id = self.values_yaml["cluster"]["efsFileSystemID"]
+        cluster_name = self.values_yaml["cluster"]["name"]
+        
+        # delete the cluster
+        cmd1 = "eksctl delete cluster -f ./init_cluster/eks_cluster.yaml"
+        out = run(cmd1)
+        print(out)
+        print("Deleted the cluster")
+        
+        # Delete MountTargets
+        cmd2 = """ aws efs describe-mount-targets \
+        --file-system-id {} \
+        --output json
+        """.format(fs_id)
+        out = json.loads(run(cmd2))
+        mt_ids = [i["MountTargetId"] for i in out["MountTargets"]]
+    
+        cmd3 = """ aws efs delete-mount-target \
+        --mount-target-id {}
+        """
+        
+        for mt_id  in mt_ids:
+            out = run(cmd3.format(mt_id))
+            print("Deleted MountTarget:", mt_id)
+            
+        # delete SecurityGroup efs-nfs-sg
+        sg_gid = None
+        cmd4 = "aws ec2 describe-security-groups"
+        out = json.loads(run(cmd4))
+        
+        for sg in out["SecurityGroups"]:
+            if sg["GroupName"] == "efs-nfs-sg":
+                sg_gid = sg["GroupId"]
+                break
+        
+        cmd5 = "aws ec2 delete-security-group --group-id {}".format(sg_gid)
+        out = run(cmd5)
+        print("Deleted SecurityGroup efs-nfs-sg")
+        
+        # delete FileSystem
+        cmd6 = """ aws efs delete-file-system \
+        --file-system-id {}
+        """.format(fs_id)
+        
+        out = run(cmd6)
+        print("Deleted FileSystem:", fs_id)
+        
+        # delete Subnets
+        cmd7 = " aws ec2 describe-subnets"
+        cmd8 = "aws ec2 delete-subnet --subnet-id {}"
+        out = json.loads(run(cmd7))
+        for i in out["Subnets"]:
+            if cluster_name in str(i["Tags"]):
+                run(cmd8.format(i["SubnetId"]))
+                print("Deleted Subnet:",i["SubnetId"])
+                
+        # delete VPC
+        cmd9 = " aws ec2 describe-vpcs"
+        cmd10 = "aws ec2 delete-vpc --vpc-id {}"
+        out = json.loads(run(cmd9))
+        for i in out["Vpcs"]:
+            if "Tags" in i and cluster_name in str(i["Tags"]):
+                run(cmd10.format(i["VpcId"]))
+                print("Deleted VPC:",i["VpcId"])
+    
+    def testing(self):
+        pass        
 
 if __name__ == '__main__':
   fire.Fire(CerebroInstaller)
