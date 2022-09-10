@@ -6,14 +6,16 @@ import subprocess
 import oyaml as yaml
 from pathlib import Path
 from kubernetes import client, config
+from fabric2 import ThreadingGroup, Connection
 
 ## Prerequisites
 # Create an IAM user with Admin permissions + Access Key - Programmatic access. Save the .csv cred file
+# Create a key-pair on EC2 with name cerebro-kube-kp
+# Create an ssh-key on local
 # Install aws cli on local and configure it using the downloaded cred file
 # Install eksctl CLI
-# Create a key-pair on EC2 with name cerebro-kube-kp
-
-
+# Install kubectl
+# Install docker
 
 def run(cmd, shell=True, capture_output=True, text=True):
     try:
@@ -35,6 +37,29 @@ class CerebroInstaller:
             self.values_yaml = yaml.safe_load(yamlfile)
             
         self.num_workers = self.values_yaml["cluster"]["workers"]
+        self.controller = None
+        self.workers = []
+        self.conn = None
+        self.s = None
+    
+    def oneTime(self):
+        # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_console
+        # https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+        # https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html
+        # https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
+        
+        # generate ssh key
+        ssh_cmd = ' ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -q -N "" '
+        run(ssh_cmd)
+        print("Created ssh key")
+        
+        # add public key to git
+        get_pub_key = 'cat ~/.ssh/id_rsa.pub'
+        pub_key = run(get_pub_key)
+        git_cmd = """ curl -H "Authorization: token {git_token}" --data '{{"title":"cerebroLocal","key":"{ssh_pub}"}}' https://api.github.com/user/keys """
+        formatted_git_cmd = git_cmd.format(git_token=self.values_yaml["creds"]["gitToken"], ssh_pub=pub_key)
+        run(formatted_git_cmd)
+        print("Added ssh key to github")
         
     def createCluster(self):
         from datetime import timedelta
@@ -64,6 +89,30 @@ class CerebroInstaller:
             print("Couldn't create the cluster")
             print(str(e))
     
+        #initialize fabric
+        host = None
+        nodes = []
+        cmd1 = "aws ec2 describe-instances"
+        reservations = json.loads(run(cmd1))
+        for reservation in reservations["Reservations"]:
+            for i in reservation["Instances"]:
+                tags = i["Tags"]
+                if "controller" in str(tags):
+                    host = i["PublicDnsName"]
+                    break
+                else:
+                    nodes.append(i["PublicDnsName"])
+        
+        self.controller = host
+        self.nodes = nodes
+        
+        user = "ec2-user"
+        pem_path = self.values_yaml["cluster"]["pemPath"]
+        connect_kwargs = {"key_filename": pem_path}
+        
+        self.conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
+        self.s = ThreadingGroup(*nodes, user=user,
+                                connect_kwargs=connect_kwargs)
     
     def addStorage(self):
         region = self.values_yaml["cluster"]["region"]
@@ -146,7 +195,6 @@ class CerebroInstaller:
             yaml.safe_dump(self.values_yaml, f)
         print("Saved FileSystem ID in values.yaml")
    
-   
     def installMetricsMonitor(self):
         config.load_kube_config()
         v1 = client.CoreV1Api()
@@ -162,7 +210,8 @@ class CerebroInstaller:
         ]
 
         for cmd in cmds:
-            run(cmd)
+            out = run(cmd)
+            print(out)
 
         name = "prom-grafana"
         ns = "prom-metrics"
@@ -172,9 +221,38 @@ class CerebroInstaller:
 
         svc = v1.read_namespaced_service(namespace=ns, name=name)
         port = svc.spec.ports[0].node_port
-
+        
+        # add ingress rule for port on security group
+        cluster_name = self.values_yaml["cluster"]["name"]
+        
+        cmd1 = "aws ec2 describe-security-groups"
+        out = json.loads(run(cmd1))
+        for sg in out["SecurityGroups"]:
+            if cluster_name in sg["GroupName"] and "controller" in sg["GroupName"]:
+                controller_sg_id = sg["GroupId"]
+        
+        cmd2 = """aws ec2 authorize-security-group-ingress \
+        --group-id {} \
+        --protocol tcp \
+        --port {} \
+        --cidr 0.0.0.0/0
+        """.format(controller_sg_id, port)
+        
+        print(cmd2)
+        out = run(cmd2)
+        print("Added Ingress rule in Controller SecurityGroup for Grafana port")
+        
+        cmd3 = "aws ec2 describe-instances"
+        instances = json.loads(run(cmd3))
+        for i in instances["Reservations"]:
+            tags = i["Instances"][0]["Tags"]
+            if "controller" in str(tags):
+                public_dns_name = i["Instances"][0]["PublicDnsName"]
+                break
+        print(public_dns_name)
+        
         print(
-            "Access Grafana with this link:\nhttp://<AWS Host Name>: {}".format(port))
+            "Access Grafana with this link:\nhttp://{}:{}".format(public_dns_name, port))
         print("username: {}\npassword: {}".format("admin", "prom-operator"))
 
         home = self.home
@@ -184,9 +262,8 @@ class CerebroInstaller:
                 "Access Grafana with this link:\nhttp://<AWS Host Name>: {}\n".format(port))
             f.write("username: {}\npassword: {}".format(
                 "admin", "prom-operator"))
-    
-    
-    def installCerebro(self):
+         
+    def initCerebro(self):
         config.load_kube_config()
         v1 = client.CoreV1Api()
         
@@ -196,7 +273,7 @@ class CerebroInstaller:
         node_name = body.items[0].metadata.name
         patched_node = body.items[0]
         
-        # v1.patch_node(node_name, patched_node)
+        v1.patch_node(node_name, patched_node)
         print("Patched Controller node:", node_name, "as node0")
         
         worker_i = 1
@@ -205,10 +282,11 @@ class CerebroInstaller:
             body.metadata.labels["cerebro/nodename"] = "node" + str(worker_i)
             node_name = body.metadata.name
             patched_node = body
-            # v1.patch_node(node_name, patched_node)
+            v1.patch_node(node_name, patched_node)
             print("Patched Worker node:", node_name, "as node" + str(worker_i))
             worker_i += 1
         
+        # create namespace, set context and setup kube-config
         cmds1 = [
             "kubectl create namespace {}".format(self.kube_namespace),
             "kubectl config set-context --current --namespace={}".format(
@@ -217,14 +295,51 @@ class CerebroInstaller:
                 self.kube_namespace, os.path.expanduser("~/.kube/config")),
         ]
         
-        # for cmd in cmds1:
-        #     out = run(cmd)
-        #     print(out)
+        for cmd in cmds1:
+            out = run(cmd)
+            print(out)
+        print("Created Cerebro namespace, set context and added kube-config secret")
+    
+        # create kubernetes secret using ssh key and git server as known host
+        known_hosts_cmd = "ssh-keyscan {} > ./reference/known_hosts".format(self.values_yaml["creds"]["gitServer"])
+        github_known_hosts = run(known_hosts_cmd)
+        kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=./reference/known_hosts"
+        run(kube_git_secret.format(github_known_hosts))
+        rm_known_hosts = "rm ./reference/known_hosts"
+        run(rm_known_hosts)
+        print("Created kubernetes secret for git")
+
+        # login to docker using tokens
+        docker_cmd = "docker login -u {} -p {}".format(self.values_yaml["creds"]["dockerUser"], self.values_yaml["creds"]["dockerToken"])
+        docker_cmd2 = "chmod -R 777 $HOME/.docker"
+        run(docker_cmd)
+        run(docker_cmd2)
+
+        # create docker secret
+        docker_secret_cmd = "kubectl create secret generic regcred --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson"
+        run(docker_secret_cmd)
+
+        self.conn.run("mkdir {}/cerebro-repo".format(home))
+        self.conn.run("mkdir {}/user-repo".format(home))
+    
+    def createController(self):
+        pass
+    
+    def createWorkers(self):
+        pass
+        
+    def installCerebro(self):
+        # initialize basic cerebro components
+        self.initCerebro()
         
         # install Prometheus and Grafana
         self.installMetricsMonitor()
         
-        #TODO: install kube-config
+        # create controller
+        self.createController()
+        
+        # create workers
+        self.createWorkers()
         
     def deleteCluster(self):
         fs_id = self.values_yaml["cluster"]["efsFileSystemID"]
@@ -291,9 +406,28 @@ class CerebroInstaller:
             if "Tags" in i and cluster_name in str(i["Tags"]):
                 run(cmd10.format(i["VpcId"]))
                 print("Deleted VPC:",i["VpcId"])
+                
+        # delete Cloudformation Stack
+        stack_name = "eksctl-" + cluster_name + "-cluster"
+        cmd11 = "aws cloudformation delete-stack --stack-name {}".format(stack_name)
+        out = run(cmd11)
+        print("Deleted CloudFormation Stack")
     
     def testing(self):
-        pass        
+        host = None
+        nodes = []
+        cmd1 = "aws ec2 describe-instances"
+        reservations = json.loads(run(cmd1))
+        for reservation in reservations["Reservations"]:
+            for i in reservation["Instances"]:
+                tags = i["Tags"]
+                if "controller" in str(tags):
+                    host = i["PublicDnsName"]
+                    break
+                else:
+                    nodes.append(i["PublicDnsName"])
+        print(host)
+        print(nodes)
 
 if __name__ == '__main__':
   fire.Fire(CerebroInstaller)

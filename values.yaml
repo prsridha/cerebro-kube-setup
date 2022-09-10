@@ -37,7 +37,8 @@ cluster:
   controllerInstance: t3.medium
   workerInstance: t3.large
   volumeSize: 80
-  efsFileSystemID: fs-0f2da31525e0b3568
+  efsFileSystemID: fs-09534e0c115192742
+  pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
 workerETL:
   checkpointPath: /data/cerebro_checkpoint_storage
   controllerDataPath: /data/cerebro_data_storage
