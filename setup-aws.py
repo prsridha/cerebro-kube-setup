@@ -41,6 +41,8 @@ class CerebroInstaller:
         self.workers = []
         self.conn = None
         self.s = None
+        
+        #TODO: how to initizlie this on later runs (after cluster is created)
     
     def oneTime(self):
         # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_console
@@ -81,7 +83,7 @@ class CerebroInstaller:
         try:
             start = time.time()
             cmd = "eksctl create cluster -f ./init_cluster/eks_cluster.yaml"
-            subprocess.run(cmd, shell=True, text=True)
+            run(cmd, capture_output=False)
             end = time.time()
             print("Created cluster successfully")
             print("Time taken to create cluster:", str(timedelta(seconds=end-start)))
@@ -347,7 +349,7 @@ class CerebroInstaller:
         
         # delete the cluster
         cmd1 = "eksctl delete cluster -f ./init_cluster/eks_cluster.yaml"
-        out = run(cmd1)
+        out = run(cmd1, capture_output=False)
         print(out)
         print("Deleted the cluster")
         
