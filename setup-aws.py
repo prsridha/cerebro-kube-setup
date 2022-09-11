@@ -232,44 +232,10 @@ class CerebroInstaller:
                 "Access Grafana with this link:\nhttp://<AWS Host Name>: {}\n".format(port))
             f.write("username: {}\npassword: {}".format(
                 "admin", "prom-operator"))
-    
-    def createCluster(self):
-        from datetime import timedelta
-         
-        with open("init_cluster/eks_cluster.yaml", 'r') as yamlfile:
-            eks_cluster_yaml = yaml.safe_load(yamlfile)
-        
-        eks_cluster_yaml["metadata"]["name"] = self.values_yaml["cluster"]["name"]
-        eks_cluster_yaml["metadata"]["region"] = self.values_yaml["cluster"]["region"]
-        eks_cluster_yaml["managedNodeGroups"][0]["instanceType"] = self.values_yaml["cluster"]["controllerInstance"]
-        eks_cluster_yaml["managedNodeGroups"][0]["volumeSize"] = self.values_yaml["cluster"]["volumeSize"]
-        eks_cluster_yaml["managedNodeGroups"][1]["instanceType"] = self.values_yaml["cluster"]["workerInstance"]
-        eks_cluster_yaml["managedNodeGroups"][1]["volumeSize"] = self.values_yaml["cluster"]["volumeSize"]
-        eks_cluster_yaml["managedNodeGroups"][1]["desiredCapacity"] = self.num_workers
-
-        with open("init_cluster/eks_cluster.yaml", "w") as yamlfile:
-            yaml.safe_dump(eks_cluster_yaml, yamlfile)
-
-        try:
-            start = time.time()
-            cmd = "eksctl create cluster -f ./init_cluster/eks_cluster.yaml"
-            subprocess.run(cmd, shell=True, text=True)
-            end = time.time()
-            print("Created cluster successfully")
-            print("Time taken to create cluster:", str(timedelta(seconds=end-start)))
-        except Exception as e:
-            print("Couldn't create the cluster")
-            print(str(e))
-            
-        # add storage
-        self.addStorage()
 
     def initCerebro(self):
         config.load_kube_config()
         v1 = client.CoreV1Api()
-        
-        # load fabric connections
-        self.initializeFabric()
         
         # patch nodes with cerebro/nodename label
         body = v1.list_node(label_selector="role=controller")
@@ -332,20 +298,7 @@ class CerebroInstaller:
     
     def createWorkers(self):
         pass
-    
-    def installCerebro(self):
-        # initialize basic cerebro components
-        self.initCerebro()
-        
-        # install Prometheus and Grafana
-        self.installMetricsMonitor()
-        
-        # create controller
-        self.createController()
-        
-        # create workers
-        self.createWorkers()
-    
+
     def deleteCluster(self):
         fs_id = self.values_yaml["cluster"]["efsFileSystemID"]
         cluster_name = self.values_yaml["cluster"]["name"]
@@ -430,37 +383,56 @@ class CerebroInstaller:
         out = run(cmd11)
         print("Deleted CloudFormation Stack")
     
+    # call the below functions from CLI
+    def createCluster(self):
+        from datetime import timedelta
+         
+        with open("init_cluster/eks_cluster.yaml", 'r') as yamlfile:
+            eks_cluster_yaml = yaml.safe_load(yamlfile)
+        
+        eks_cluster_yaml["metadata"]["name"] = self.values_yaml["cluster"]["name"]
+        eks_cluster_yaml["metadata"]["region"] = self.values_yaml["cluster"]["region"]
+        eks_cluster_yaml["managedNodeGroups"][0]["instanceType"] = self.values_yaml["cluster"]["controllerInstance"]
+        eks_cluster_yaml["managedNodeGroups"][0]["volumeSize"] = self.values_yaml["cluster"]["volumeSize"]
+        eks_cluster_yaml["managedNodeGroups"][1]["instanceType"] = self.values_yaml["cluster"]["workerInstance"]
+        eks_cluster_yaml["managedNodeGroups"][1]["volumeSize"] = self.values_yaml["cluster"]["volumeSize"]
+        eks_cluster_yaml["managedNodeGroups"][1]["desiredCapacity"] = self.num_workers
+
+        with open("init_cluster/eks_cluster.yaml", "w") as yamlfile:
+            yaml.safe_dump(eks_cluster_yaml, yamlfile)
+
+        try:
+            start = time.time()
+            cmd = "eksctl create cluster -f ./init_cluster/eks_cluster.yaml"
+            subprocess.run(cmd, shell=True, text=True)
+            end = time.time()
+            print("Created cluster successfully")
+            print("Time taken to create cluster:", str(timedelta(seconds=end-start)))
+        except Exception as e:
+            print("Couldn't create the cluster")
+            print(str(e))
+            
+        # add storage
+        self.addStorage()
+
+    def installCerebro(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        # install Prometheus and Grafana
+        self.installMetricsMonitor()
+        
+        # initialize basic cerebro components
+        self.initCerebro()
+        
+        # create controller
+        self.createController()
+        
+        # create workers
+        self.createWorkers()
+    
     def testing(self):
-        fs_id = self.values_yaml["cluster"]["efsFileSystemID"]
-        cluster_name = self.values_yaml["cluster"]["name"]
-        
-        # delete Subnets
-        cmd7 = " aws ec2 describe-subnets"
-        cmd8 = "aws ec2 delete-subnet --subnet-id {}"
-        out = json.loads(run(cmd7))
-        for i in out["Subnets"]:
-            if cluster_name in str(i["Tags"]):
-                run(cmd8.format(i["SubnetId"]))
-                print("Deleted Subnet:",i["SubnetId"])
-        
-        time.sleep(5)
-        
-        # delete VPC
-        cmd9 = " aws ec2 describe-vpcs"
-        cmd10 = "aws ec2 delete-vpc --vpc-id {}"
-        out = json.loads(run(cmd9))
-        for i in out["Vpcs"]:
-            if "Tags" in i and cluster_name in str(i["Tags"]):
-                run(cmd10.format(i["VpcId"]))
-                print("Deleted VPC:",i["VpcId"])
-                
-        time.sleep(5)
-                
-        # delete Cloudformation Stack
-        stack_name = "eksctl-" + cluster_name + "-cluster"
-        cmd11 = "aws cloudformation delete-stack --stack-name {}".format(stack_name)
-        out = run(cmd11)
-        print("Deleted CloudFormation Stack")
+        pass
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
