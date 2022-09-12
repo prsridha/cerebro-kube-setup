@@ -1,3 +1,4 @@
+from logging import captureWarnings
 import os
 import json
 import time
@@ -8,24 +9,77 @@ from pathlib import Path
 from kubernetes import client, config
 from fabric2 import ThreadingGroup, Connection
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 ## Prerequisites
 # Create an IAM user with Admin permissions + Access Key - Programmatic access. Save the .csv cred file
+# Install aws cli on local and configure it using the downloaded cred file
 # Create a key-pair on EC2 with name cerebro-kube-kp
 # Create an ssh-key on local
-# Install aws cli on local and configure it using the downloaded cred file
 # Install eksctl CLI
 # Install kubectl
 # Install docker
+# Install helm
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def run(cmd, shell=True, capture_output=True, text=True):
     try:
         out = subprocess.run(cmd, shell=shell, capture_output=capture_output, text=text)
         # print(cmd)
-        return out.stdout
+        if out.stderr:
+            raise Exception("Command Error:" + str(out.stderr))
+        if capture_output:
+            return out.stdout.rstrip("\n")
+        else:
+            return None
     except Exception as e:
         print("Command Unsuccessful:", cmd)
         print(str(e))
         raise Exception
+
+def checkPodStatus(label, namespace):
+    from kubernetes import client, config
+
+    config.load_kube_config()
+    v1 = client.CoreV1Api()
+    names = []
+    pods_list = v1.list_namespaced_pod(
+        namespace, label_selector=label, watch=False)
+    for pod in pods_list.items:
+        names.append(pod.metadata.name)
+
+    if not names:
+        return False
+
+    for i in names:
+        pod = v1.read_namespaced_pod_status(i, namespace, pretty='true')
+        status = pod.status.phase
+        if status != "Running":
+            return False
+    return True
+
+def getPodNames(namespace):
+    label = "app=cerebro-controller"
+    config.load_kube_config()
+    v1 = client.CoreV1Api()
+    pods_list = v1.list_namespaced_pod(
+        namespace, label_selector=label, watch=False)
+    controller = pods_list.items[0].metadata.name
+
+    label = "type=cerebro-worker-etl"
+    pods_list = v1.list_namespaced_pod(
+        namespace, label_selector=label, watch=False)
+    etl_workers = [i.metadata.name for i in pods_list.items]
+
+    label = "type=cerebro-worker-mop"
+    pods_list = v1.list_namespaced_pod(
+        namespace, label_selector=label, watch=False)
+    mop_workers = [i.metadata.name for i in pods_list.items]
+
+    return {
+        "controller": controller,
+        "etl_workers": etl_workers,
+        "mop_workers": mop_workers
+    }
 
 class CerebroInstaller:
     def __init__(self):
@@ -101,7 +155,7 @@ class CerebroInstaller:
         # get CIDR range
         cmd3 = 'aws ec2 describe-vpcs --vpc-ids {} --query "Vpcs[].CidrBlock" --output text'.format(vpc_id)
         cidr_range = run(cmd3)
-        print("CIDR Range", cidr_range)
+        print("CIDR Range:", cidr_range)
         
         # create security group for inbound NFS traffic
         cmd4 = 'aws ec2 create-security-group --group-name efs-nfs-sg --description "Allow NFS traffic for EFS" --vpc-id {}'.format(vpc_id)
@@ -152,6 +206,11 @@ class CerebroInstaller:
         print("Installed EFS CSI driver on the cluster")
         
         # create storageclass
+        with open("./init_cluster/storage_class.yaml", "r") as f:
+            sc_yaml = yaml.safe_load(f)
+        sc_yaml["parameters"]["fileSystemId"] = file_sys_id
+        with open("./init_cluster/storage_class.yaml", "w") as f:
+            yaml.safe_dump(sc_yaml, f)
         cmd12 = "kubectl apply -f ./init_cluster/storage_class.yaml"
         out = run(cmd12)
         cmd13 = "kubectl get sc"
@@ -166,6 +225,9 @@ class CerebroInstaller:
         print("Saved FileSystem ID in values.yaml")
    
     def installMetricsMonitor(self):
+        # load fabric connections
+        self.initializeFabric()
+        
         config.load_kube_config()
         v1 = client.CoreV1Api()
 
@@ -234,6 +296,9 @@ class CerebroInstaller:
                 "admin", "prom-operator"))
 
     def initCerebro(self):
+        # load fabric connections
+        self.initializeFabric()
+        
         config.load_kube_config()
         v1 = client.CoreV1Api()
         
@@ -272,7 +337,7 @@ class CerebroInstaller:
     
         # create kubernetes secret using ssh key and git server as known host
         known_hosts_cmd = "ssh-keyscan {} > ./reference/known_hosts".format(self.values_yaml["creds"]["gitServer"])
-        github_known_hosts = run(known_hosts_cmd)
+        github_known_hosts = run(known_hosts_cmd, capture_output=False)
         kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=./reference/known_hosts"
         run(kube_git_secret.format(github_known_hosts))
         rm_known_hosts = "rm ./reference/known_hosts"
@@ -282,106 +347,275 @@ class CerebroInstaller:
         # login to docker using tokens
         docker_cmd = "docker login -u {} -p {}".format(self.values_yaml["creds"]["dockerUser"], self.values_yaml["creds"]["dockerToken"])
         docker_cmd2 = "chmod -R 777 $HOME/.docker"
-        run(docker_cmd)
-        run(docker_cmd2)
+        run(docker_cmd, capture_output=False)
+        run(docker_cmd2, capture_output=False)
+        print("Docker login successful")
 
         # create docker secret
         docker_secret_cmd = "kubectl create secret generic regcred --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson"
         run(docker_secret_cmd)
+        print("Created kubernetes secret for Docker")
 
         home = "/home/ec2-user"
         self.conn.run("mkdir {}/cerebro-repo".format(home))
         self.conn.run("mkdir {}/user-repo".format(home))
+        print("Created directories for cerebro repos")
+    
+    def addDaskMeta(self):
+        # write scheduler IP to yaml file
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        svc_name = "cerebro-controller-service"
+        svc = v1.read_namespaced_service(
+            namespace=self.kube_namespace, name=svc_name)
+        controller_ip = svc.spec.cluster_ip
+
+        self.values_yaml["workerETL"]["schedulerIP"] = controller_ip
+        
+        with open('values.yaml', 'w') as yamlfile:
+            yaml.safe_dump(self.values_yaml, yamlfile)
+
+        print("cerebro-controller's IP: ", controller_ip)
+        
+        # add Dask Dashboard info to references
+        namespace = self.kube_namespace
+        label = "serviceApp=dask"
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        jupyter_svc = v1.list_namespaced_service(
+            namespace, label_selector=label, watch=False)
+        jupyter_svc = jupyter_svc.items[0]
+        node_port = jupyter_svc.spec.ports[0].node_port
+        
+        daskDashboardPort = self.values_yaml["controller"]["services"]["daskDashboardPort"]
+
+        pem_path = self.values_yaml["cluster"]["pemPath"]
+        user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
+            self.controller, pem_path, daskDashboardPort, node_port)
+        s = "Run this command on your local machine to access the Dask Dashboard : \n{}".format(
+            user_pf_command) + "\n" + "http://localhost:{}".format(daskDashboardPort)
+        
+        print(s)
+        Path("reference").mkdir(parents=True, exist_ok=True)
+        with open("reference/dask_dashboard_command.txt", "w+") as f:
+            f.write(s)
+    
+    def addJupyterMeta(self):
+        users_port = self.values_yaml["controller"]["services"]["jupyterUserPort"]
+
+        controller = getPodNames(self.kube_namespace)["controller"]
+
+        jyp_check_cmd = "kubectl exec -t {} -- ls".format(controller)
+        ls_out = run(jyp_check_cmd)
+        while "JUPYTER_TOKEN" not in ls_out:
+            time.sleep(1)
+            ls_out = run(jyp_check_cmd)
+            
+        cmd = "kubectl exec -t {} -- cat JUPYTER_TOKEN".format(controller)
+        jupyter_token = run(cmd)
+        
+        namespace = self.kube_namespace
+        label = "serviceApp=jupyter"
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        jupyter_svc = v1.list_namespaced_service(
+            namespace, label_selector=label, watch=False)
+        jupyter_svc = jupyter_svc.items[0]
+        node_port = jupyter_svc.spec.ports[0].node_port
+
+        pem_path = self.values_yaml["cluster"]["pemPath"]
+        user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
+            self.controller, pem_path, users_port, node_port)
+        s = "Run this command on your local machine to access Jupyter Notebook : \n{}".format(
+            user_pf_command) + "\n" + "http://localhost:{}/?token={}".format(users_port, jupyter_token)
+        
+        print(s)
+        Path("reference").mkdir(parents=True, exist_ok=True)
+        with open("reference/jupyter_command.txt", "w+") as f:
+            f.write(s)
+            
+        # add tensorboard port
+        users_port = self.values_yaml["controller"]["tensorboardPort"]
+        label = "serviceApp=tensorboard"
+        tensorboard_svc = v1.list_namespaced_service(
+            namespace, label_selector=label, watch=False)
+        tensorboard_svc = tensorboard_svc.items[0]
+        node_port = tensorboard_svc.spec.ports[0].node_port
+
+        user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
+            self.controller, pem_path, users_port, node_port)
+        s = "Run this command on your local machine to access Tensorboard Dashboard : \n{}".format(
+            user_pf_command) + "\n" + "http://localhost:{}".format(users_port)
+        
+        print(s)
+        Path("reference").mkdir(parents=True, exist_ok=True)
+        with open("reference/tensorboard_command.txt", "w+") as f:
+            f.write(s)
     
     def createController(self):
-        pass
-    
+        # load fabric connections
+        self.initializeFabric()
+        
+        cmds = [
+            "mkdir charts"
+            "helm create charts/cerebro-controller",
+            "rm -rf charts/cerebro-controller/templates/*",
+            "cp ./controller/* charts/cerebro-controller/templates/",
+            "cp values.yaml charts/cerebro-controller/values.yaml"
+            "helm install --namespace=cerebro controller charts/cerebro-controller/"
+            "rm -rf charts/cerebro-controller"
+        ]
+
+        for cmd in cmds:
+            time.sleep(1)
+            out = run(cmd, capture_output=False)
+            print(out)
+
+        print("Created Controller deployment")
+        
+        label = "app=cerebro-controller"
+
+        print("Waiting for pods to start...")
+        while not checkPodStatus(label, self.kube_namespace):
+            time.sleep(1)
+
+        # add all permissions to repos
+        cmd1 = "sudo chmod -R 777 /home/ec2-user/cerebro-repo/cerebro-kube"
+        cmd2 = "sudo chmod -R 777 /home/ec2-user/user-repo/*"
+        self.conn.sudo(cmd1)
+        self.conn.sudo(cmd2)
+        print("Added permissions to repos")
+
+        self.add_dask_meta()
+        print("Initialized dask")
+        self.add_jupyter_meta()
+        print("Initialized JupyterNotebook")
+
+        print("Done")
+
     def createWorkers(self):
-        pass
+        # load fabric connections
+        self.initializeFabric()
 
     def deleteCluster(self):
         fs_id = self.values_yaml["cluster"]["efsFileSystemID"]
         cluster_name = self.values_yaml["cluster"]["name"]
         
-        # delete the cluster
-        cmd1 = "eksctl delete cluster -f ./init_cluster/eks_cluster.yaml"
-        out = run(cmd1, capture_output=False)
-        print(out)
-        print("Deleted the cluster")
+        def _runCommands(fn, name):
+            try:
+                fn()
+            except Exception as e:
+                print("Command Failed for", name)
+                print(str(e))
         
-        time.sleep(5)
+        # delete the cluster
+        def _deleteCluster():   
+            cmd1 = "eksctl delete cluster -f ./init_cluster/eks_cluster.yaml"
+            run(cmd1, capture_output=False)
+            print("Deleted the cluster")
+        _runCommands(_deleteCluster, "clusterDelete")
+        time.sleep(3)
         
         # Delete MountTargets
-        cmd2 = """ aws efs describe-mount-targets \
-        --file-system-id {} \
-        --output json
-        """.format(fs_id)
-        out = json.loads(run(cmd2))
-        mt_ids = [i["MountTargetId"] for i in out["MountTargets"]]
+        def _deleteMountTargets():            
+            cmd2 = """ aws efs describe-mount-targets \
+            --file-system-id {} \
+            --output json
+            """.format(fs_id)
+            out = json.loads(run(cmd2))
+            mt_ids = [i["MountTargetId"] for i in out["MountTargets"]]
     
-        cmd3 = """ aws efs delete-mount-target \
-        --mount-target-id {}
-        """
+            cmd3 = """ aws efs delete-mount-target \
+            --mount-target-id {}
+            """
+            for mt_id  in mt_ids:
+                run(cmd3.format(mt_id))
+                print("Deleted MountTarget:", mt_id)
+            print("Deleted MountTargets")
+        _runCommands(_deleteMountTargets, "deleteMountTarget")
+        time.sleep(3)
         
-        for mt_id  in mt_ids:
-            out = run(cmd3.format(mt_id))
-            print("Deleted MountTarget:", mt_id)
-            
-        time.sleep(5)
-            
         # delete SecurityGroup efs-nfs-sg
-        sg_gid = None
-        cmd4 = "aws ec2 describe-security-groups"
-        out = json.loads(run(cmd4))
-        
-        for sg in out["SecurityGroups"]:
-            if sg["GroupName"] == "efs-nfs-sg":
-                sg_gid = sg["GroupId"]
-                break
-        
-        cmd5 = "aws ec2 delete-security-group --group-id {}".format(sg_gid)
-        out = run(cmd5)
-        print("Deleted SecurityGroup efs-nfs-sg")
-        
-        time.sleep(5)
+        def _deleteSecurityGroups():
+            sg_gid = None
+            cmd4 = "aws ec2 describe-security-groups"
+            out = json.loads(run(cmd4))
+            
+            for sg in out["SecurityGroups"]:
+                if sg["GroupName"] == "efs-nfs-sg":
+                    sg_gid = sg["GroupId"]
+                    break
+            
+            cmd5 = "aws ec2 delete-security-group --group-id {}".format(sg_gid)
+            run(cmd5)
+            print("Deleted SecurityGroup efs-nfs-sg")
+        _runCommands(_deleteSecurityGroups, "deleteSecurityGroups")
+        time.sleep(3)
         
         # delete FileSystem
-        cmd6 = """ aws efs delete-file-system \
-        --file-system-id {}
-        """.format(fs_id)
-        
-        out = run(cmd6)
-        print("Deleted FileSystem:", fs_id)
-        
-        time.sleep(5)
+        def _deleteFileSystem():
+            cmd6 = """ aws efs delete-file-system \
+            --file-system-id {}
+            """.format(fs_id)
+            run(cmd6)
+            print("Deleted FileSystem")
+        _runCommands(_deleteFileSystem, "deleteFileSystem")
+        time.sleep(3)
         
         # delete Subnets
-        cmd7 = " aws ec2 describe-subnets"
-        cmd8 = "aws ec2 delete-subnet --subnet-id {}"
-        out = json.loads(run(cmd7))
-        for i in out["Subnets"]:
-            if cluster_name in str(i["Tags"]):
-                run(cmd8.format(i["SubnetId"]))
-                print("Deleted Subnet:",i["SubnetId"])
-                
-        time.sleep(5)
+        def _deleteSubnets():
+            cmd7 = " aws ec2 describe-subnets"
+            cmd8 = "aws ec2 delete-subnet --subnet-id {}"
+            out = json.loads(run(cmd7))
+            for i in out["Subnets"]:
+                if cluster_name in str(i["Tags"]):
+                    run(cmd8.format(i["SubnetId"]))
+                    print("Deleted Subnet:",i["SubnetId"])
+            print("Deleted all Subnets")
+        _runCommands(_deleteSubnets, "deleteSubnets")
+        time.sleep(3)
                 
         # delete VPC
-        cmd9 = " aws ec2 describe-vpcs"
-        cmd10 = "aws ec2 delete-vpc --vpc-id {}"
-        out = json.loads(run(cmd9))
-        for i in out["Vpcs"]:
-            if "Tags" in i and cluster_name in str(i["Tags"]):
-                run(cmd10.format(i["VpcId"]))
-                print("Deleted VPC:",i["VpcId"])
-                
-        time.sleep(5)
+        def _deleteVPC():
+            cmd9 = " aws ec2 describe-vpcs"
+            cmd10 = "aws ec2 delete-vpc --vpc-id {}"
+            out = json.loads(run(cmd9))
+            for i in out["Vpcs"]:
+                if "Tags" in i and cluster_name in str(i["Tags"]):
+                    run(cmd10.format(i["VpcId"]))
+                    print("Deleted VPC:",i["VpcId"])
+            print("Deleted all VPCs")
+        _runCommands(_deleteVPC, "deleteVPC")
+        time.sleep(3)
                 
         # delete Cloudformation Stack
-        stack_name = "eksctl-" + cluster_name + "-cluster"
-        cmd11 = "aws cloudformation delete-stack --stack-name {}".format(stack_name)
-        out = run(cmd11)
-        print("Deleted CloudFormation Stack")
+        def _deleteCloudFormationStack():
+            stack_name = "eksctl-" + cluster_name + "-cluster"
+            cmd11 = "aws cloudformation delete-stack --stack-name {}".format(stack_name)
+            run(cmd11)
+            print("Deleted CloudFormation Stack")
+        _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
+    
+    def testing(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        cmds = [
+            "mkdir -p charts",
+            "helm create charts/cerebro-controller",
+            "rm -rf charts/cerebro-controller/templates/*",
+            "cp ./controller/* charts/cerebro-controller/templates/",
+            "cp values.yaml charts/cerebro-controller/values.yaml",
+            "helm install --namespace=cerebro controller charts/cerebro-controller/",
+            "rm -rf charts/cerebro-controller"
+        ]
+
+        for cmd in cmds:
+            time.sleep(1)
+            out = run(cmd, capture_output=False)
+            print(cmd)
+
+        print("Created Controller deployment")
     
     # call the below functions from CLI
     def createCluster(self):
@@ -411,28 +645,21 @@ class CerebroInstaller:
         except Exception as e:
             print("Couldn't create the cluster")
             print(str(e))
-            
         # add storage
-        self.addStorage()
+        # self.addStorage()
 
-    def installCerebro(self):
-        # load fabric connections
-        self.initializeFabric()
-        
+    def installCerebro(self):        
         # install Prometheus and Grafana
         self.installMetricsMonitor()
         
         # initialize basic cerebro components
-        self.initCerebro()
+        # self.initCerebro()
         
         # create controller
-        self.createController()
+        # self.createController()
         
         # create workers
-        self.createWorkers()
-    
-    def testing(self):
-        pass
+        # self.createWorkers()
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)

@@ -47,3 +47,19 @@ spec:
   selector: 
     matchLabels:
       name: cerebro-data-pv
+---
+# Data pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cerebro-metrics-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: {{ .Values.controller.volumes.metricsCapacity }}
+  selector: 
+    matchLabels:
+      name: cerebro-metrics-pv
