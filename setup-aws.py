@@ -619,7 +619,7 @@ class CerebroInstaller:
         print("Created the workers")
 
     def deleteCluster(self):
-        fs_id = self.values_yaml["cluster"]["efsFileSystemID"]
+        fs_ids = self.values_yaml["cluster"]["efsFileSystemIds"].values()
         cluster_name = self.values_yaml["cluster"]["name"]
         
         def _runCommands(fn, name):
@@ -630,7 +630,7 @@ class CerebroInstaller:
                 print(str(e))
         
         # delete the cluster
-        def _deleteCluster():   
+        def _deleteCluster(): 
             cmd1 = "eksctl delete cluster -f ./init_cluster/eks_cluster.yaml"
             run(cmd1, capture_output=False)
             print("Deleted the cluster")
@@ -638,13 +638,15 @@ class CerebroInstaller:
         time.sleep(3)
         
         # Delete MountTargets
-        def _deleteMountTargets():            
-            cmd2 = """ aws efs describe-mount-targets \
-            --file-system-id {} \
-            --output json
-            """.format(fs_id)
-            out = json.loads(run(cmd2))
-            mt_ids = [i["MountTargetId"] for i in out["MountTargets"]]
+        def _deleteMountTargets():
+            mt_ids = []
+            for fs_id in fs_ids:          
+                cmd2 = """ aws efs describe-mount-targets \
+                --file-system-id {} \
+                --output json
+                """.format(fs_id)
+                out = json.loads(run(cmd2))
+                mt_ids.extend([i["MountTargetId"] for i in out["MountTargets"]])
     
             cmd3 = """ aws efs delete-mount-target \
             --mount-target-id {}
@@ -652,8 +654,20 @@ class CerebroInstaller:
             for mt_id  in mt_ids:
                 run(cmd3.format(mt_id))
                 print("Deleted MountTarget:", mt_id)
-            print("Deleted MountTargets")
+            print("Deleted all MountTargets")
         _runCommands(_deleteMountTargets, "deleteMountTarget")
+        time.sleep(5)
+        
+        # delete FileSystem
+        def _deleteFileSystem():
+            for fs_id in fs_ids:
+                cmd6 = """ aws efs delete-file-system \
+                --file-system-id {}
+                """.format(fs_id)
+                run(cmd6)
+                print("Deleted filesystem:", fs_id)
+            print("Deleted all FileSystems")
+        _runCommands(_deleteFileSystem, "deleteFileSystem")
         time.sleep(3)
         
         # delete SecurityGroup efs-nfs-sg
@@ -671,16 +685,6 @@ class CerebroInstaller:
             run(cmd5)
             print("Deleted SecurityGroup efs-nfs-sg")
         _runCommands(_deleteSecurityGroups, "deleteSecurityGroups")
-        time.sleep(3)
-        
-        # delete FileSystem
-        def _deleteFileSystem():
-            cmd6 = """ aws efs delete-file-system \
-            --file-system-id {}
-            """.format(fs_id)
-            run(cmd6)
-            print("Deleted FileSystem")
-        _runCommands(_deleteFileSystem, "deleteFileSystem")
         time.sleep(3)
         
         # delete Subnets
