@@ -14,10 +14,11 @@ spec:
     - ReadWriteMany
     - ReadWriteOnce
   storageClassName: efs-sc
+  volumeMode: Filesystem
   persistentVolumeReclaimPolicy: Delete
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: {{ .Values.cluster.efsFileSystemID }}
+    volumeHandle: {{ .Values.cluster.efsFileSystemIds.checkpointFsId }}
 ---
 # Data Volume
 apiVersion: v1
@@ -33,10 +34,11 @@ spec:
     - ReadWriteOnce
     - ReadWriteMany
   storageClassName: efs-sc
+  volumeMode: Filesystem
   persistentVolumeReclaimPolicy: Delete
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: {{ .Values.cluster.efsFileSystemID }}
+    volumeHandle: {{ .Values.cluster.efsFileSystemIds.dataFsId }}
 ---
 # Config Volume
 apiVersion: v1
@@ -52,10 +54,11 @@ spec:
     - ReadWriteOnce
     - ReadWriteMany
   storageClassName: efs-sc
+  volumeMode: Filesystem
   persistentVolumeReclaimPolicy: Delete
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: {{ .Values.cluster.efsFileSystemID }}
+    volumeHandle: {{ .Values.cluster.efsFileSystemIds.configFsId }}
 ---
 # Metrics Volume
 apiVersion: v1
@@ -71,7 +74,8 @@ spec:
     - ReadWriteOnce
     - ReadWriteMany
   storageClassName: efs-sc
+  volumeMode: Filesystem
   persistentVolumeReclaimPolicy: Delete
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: {{ .Values.cluster.efsFileSystemID }}
+    volumeHandle: {{ .Values.cluster.efsFileSystemIds.metricsFsId }}

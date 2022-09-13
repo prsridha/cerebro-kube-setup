@@ -31,21 +31,26 @@ creds:
   gitToken: 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
 namespace: cerebro
 cluster:
-  name: cerebro-kube-2
+  name: cerebro-kube-1
   workers: 4
   region: ap-south-1
   controllerInstance: t3.medium
   workerInstance: t3.large
   volumeSize: 80
-  efsFileSystemID: fs-09534e0c115192742
+  efsFileSystemIds:
+    checkpointFsId: fs-0e3317872e548de93
+    dataFsId: fs-0dd0d78b2c6a2663b
+    metricsFsId: fs-0d460787382b975b3
+    configFsId: fs-0487a4f94319b49e6
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
+  containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
 workerETL:
   checkpointPath: /data/cerebro_checkpoint_storage
   controllerDataPath: /data/cerebro_data_storage
   workerDataPath: /cerebro_data_storage_worker
   nworkers: 16
   port: 8787
-  schedulerIP: 10.97.81.73
+  schedulerIP: 10.100.135.183
   workerContainerPort: 8787
   workerImage: prsridha/cerebro-kube:latest
 workerMOP:

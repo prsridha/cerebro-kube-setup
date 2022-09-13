@@ -1,4 +1,3 @@
-from logging import captureWarnings
 import os
 import json
 import time
@@ -138,24 +137,71 @@ class CerebroInstaller:
         run(formatted_git_cmd)
         print("Added ssh key to github")
         
+        # create IAM EFS Policy
+        cmd1 = """
+        aws iam create-policy \
+            --policy-name AmazonEKS_EFS_CSI_Driver_Policy \
+            --policy-document file://init_cluster/iam-policy-example.json
+        """
+        run(cmd1)
+        print("Created IAM policy")
+        
     def addStorage(self):
         region = self.values_yaml["cluster"]["region"]
+        cluster_name = self.values_yaml["cluster"]["name"]
+        image_registry = self.values_yaml["cluster"]["containerImageRegistery"]
         
-        # get cluster name
-        cmd1 = "eksctl get cluster -o json"
-        out = run(cmd1)
-        cluster_name = json.loads(out)[0]["Name"]
-        print("Cluster name:", cluster_name)
-
+        # add OIDC to IAM role
+        cmd4 = "eksctl utils associate-iam-oidc-provider --cluster {} --approve".format(cluster_name)
+        run(cmd4, capture_output=False)
+        time.sleep(1)
+        
+        # create service account
+        cmd5 = "aws sts get-caller-identity"
+        account_id = json.loads(run(cmd5))["Account"]
+        
+        cmd6 = """
+        eksctl create iamserviceaccount \
+            --cluster {} \
+            --namespace kube-system \
+            --name efs-csi-controller-sa \
+            --attach-policy-arn arn:aws:iam::{}:policy/AmazonEKS_EFS_CSI_Driver_Policy \
+            --approve \
+            --region {}
+        """.format(cluster_name, account_id, region)
+        run(cmd6, capture_output=False)
+        print("Created IAM ServiceAccount")
+        time.sleep(1)
+        
+        # install efs csi driver
+        cmd7 = """
+        helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver \
+            --namespace kube-system \
+            --set image.repository={}/eks/aws-efs-csi-driver \
+            --set controller.serviceAccount.create=false \
+            --set controller.serviceAccount.name=efs-csi-controller-sa
+        """.format(image_registry)
+        run(cmd7, capture_output=False)
+        print("Installed EFS CSI driver")
+        # wait till driver pods are up and running:
+        print("Waiting for csi driver pods to start-up")
+        label = "app.kubernetes.io/name=aws-efs-csi-driver,app.kubernetes.io/instance=aws-efs-csi-driver"
+        ns = "kube-system"
+        while not checkPodStatus(label, ns):
+            time.sleep(1)
+        print("CSI pods ready")
+        
         # get vpc id
-        cmd2 = 'aws eks describe-cluster --name {} --query "cluster.resourcesVpcConfig.vpcId" --output text'.format(cluster_name)
-        vpc_id = run(cmd2)
+        cmd8 = 'aws eks describe-cluster --name {} --query "cluster.resourcesVpcConfig.vpcId" --output text'.format(cluster_name)
+        vpc_id = run(cmd8)
         print("VPC ID:", vpc_id)
-
+        time.sleep(1)
+        
         # get CIDR range
         cmd3 = 'aws ec2 describe-vpcs --vpc-ids {} --query "Vpcs[].CidrBlock" --output text'.format(vpc_id)
         cidr_range = run(cmd3)
         print("CIDR Range:", cidr_range)
+        time.sleep(1)
         
         # create security group for inbound NFS traffic
         cmd4 = 'aws ec2 create-security-group --group-name efs-nfs-sg --description "Allow NFS traffic for EFS" --vpc-id {}'.format(vpc_id)
@@ -166,18 +212,28 @@ class CerebroInstaller:
         
         # add rules to the security group
         cmd5 = 'aws ec2 authorize-security-group-ingress --group-id {} --protocol tcp --port 2049 --cidr {}'.format(sg_id, cidr_range)
-        out = run(cmd5)
+        run(cmd5)
         print("Added ingress rules to security group")
         
-        # create the AWS EFS File System (unencrypted)
-        cmd6 = "aws efs create-file-system --region {}".format(region)
-        out = run(cmd6)
-        print("Created EFS file system")
-        # get file system id
+        # create the AWS EFS File Systems (one for each PV) (unencrypted)
+        cmd6 = """
+            aws efs create-file-system \
+            --region {} \
+            --performance-mode generalPurpose \
+            --query 'FileSystemId'
+            """.format(region)
+        for i in range(4):
+            run(cmd6)
+        print("Created 4 EFS file systems")
+        
+        # get file system ids
+        file_systems = []
         cmd7 = "aws efs describe-file-systems"
         out = run(cmd7)
-        file_sys_id = json.loads(out)["FileSystems"][0]["FileSystemId"]
-        print("Filesystem ID:", file_sys_id)
+        for i in range(4):
+            file_sys_id = json.loads(out)["FileSystems"][i]["FileSystemId"]
+            file_systems.append(file_sys_id)
+        print("Filesystem IDs:", file_systems)
         
         # get subnets for vpc
         cmd8 = "aws ec2 describe-subnets --filter Name=vpc-id,Values={} --query 'Subnets[?MapPublicIpOnLaunch==`false`].SubnetId'".format(vpc_id)
@@ -193,33 +249,25 @@ class CerebroInstaller:
             --security-group  {} \
             --subnet-id $subnet \
             --region {}
-        done""".format(" ".join(subnets_list), file_sys_id, sg_id, region)
-        out = run(cmd9)
-        print("Created mount target for subnets")
-
-        # install the EFS CSI driver
-        cmd10 = 'kubectl apply -k "github.com/kubernetes-sigs/aws-efs-csi-driver/deploy/kubernetes/overlays/dev/?ref=master"'
-        out = run(cmd10)
-        cmd11 = "kubectl get csidrivers.storage.k8s.io"
-        out = run(cmd11)
-        print(out)
-        print("Installed EFS CSI driver on the cluster")
+        done"""
+        for i in range(4):
+            file_sys_id = file_systems[i]
+            out = run(cmd9.format(" ".join(subnets_list), file_sys_id, sg_id, region))
+            print("Created mount targets for all subnets for file system {}".format(file_sys_id))
+        print("Created mount targets for all subnets for all file systems")
         
-        # create storageclass
-        with open("./init_cluster/storage_class.yaml", "r") as f:
-            sc_yaml = yaml.safe_load(f)
-        sc_yaml["parameters"]["fileSystemId"] = file_sys_id
-        with open("./init_cluster/storage_class.yaml", "w") as f:
-            yaml.safe_dump(sc_yaml, f)
-        cmd12 = "kubectl apply -f ./init_cluster/storage_class.yaml"
-        out = run(cmd12)
-        cmd13 = "kubectl get sc"
-        out = run(cmd13)
-        print(out)
-        print("Created storage class")
+        # create storage class
+        cmd10 = "kubectl apply -f init_cluster/storage_class.yaml"
+        run(cmd10)
+        print("Created Storage Class")
         
         # update file system id to values.yaml
-        self.values_yaml["cluster"]["efsFileSystemID"] = file_sys_id
+        self.values_yaml["cluster"]["efsFileSystemID"] = {
+            "checkpointFSId": file_systems[0],
+            "dataFsId": file_systems[1],
+            "metricsFsId": file_systems[2],
+            "configFsId": file_systems[3]
+        }
         with open("values.yaml", "w") as f:
             yaml.safe_dump(self.values_yaml, f)
         print("Saved FileSystem ID in values.yaml")
@@ -405,13 +453,13 @@ class CerebroInstaller:
 
         controller = getPodNames(self.kube_namespace)["controller"]
 
-        jyp_check_cmd = "kubectl exec -t {} -- ls".format(controller)
+        jyp_check_cmd = "kubectl exec -t {} -c cerebro-controller-container -- ls".format(controller)
         ls_out = run(jyp_check_cmd)
         while "JUPYTER_TOKEN" not in ls_out:
             time.sleep(1)
             ls_out = run(jyp_check_cmd)
             
-        cmd = "kubectl exec -t {} -- cat JUPYTER_TOKEN".format(controller)
+        cmd = "kubectl exec -t {} -c cerebro-controller-container -- cat JUPYTER_TOKEN".format(controller)
         jupyter_token = run(cmd)
         
         namespace = self.kube_namespace
@@ -435,7 +483,7 @@ class CerebroInstaller:
             f.write(s)
             
         # add tensorboard port
-        users_port = self.values_yaml["controller"]["tensorboardPort"]
+        users_port = self.values_yaml["controller"]["services"]["tensorboardPort"]
         label = "serviceApp=tensorboard"
         tensorboard_svc = v1.list_namespaced_service(
             namespace, label_selector=label, watch=False)
@@ -486,9 +534,9 @@ class CerebroInstaller:
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
 
-        self.add_dask_meta()
+        self.addDaskMeta()
         print("Initialized dask")
-        self.add_jupyter_meta()
+        self.addJupyterMeta()
         print("Initialized JupyterNotebook")
 
         print("Done")
@@ -597,26 +645,8 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
     
     def testing(self):
-        # load fabric connections
-        self.initializeFabric()
-        
-        cmds = [
-            "mkdir -p charts",
-            "helm create charts/cerebro-controller",
-            "rm -rf charts/cerebro-controller/templates/*",
-            "cp ./controller/* charts/cerebro-controller/templates/",
-            "cp values.yaml charts/cerebro-controller/values.yaml",
-            "helm install --namespace=cerebro controller charts/cerebro-controller/",
-            "rm -rf charts/cerebro-controller"
-        ]
+        pass
 
-        for cmd in cmds:
-            time.sleep(1)
-            out = run(cmd, capture_output=False)
-            print(cmd)
-
-        print("Created Controller deployment")
-    
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
@@ -653,10 +683,10 @@ class CerebroInstaller:
         self.installMetricsMonitor()
         
         # initialize basic cerebro components
-        # self.initCerebro()
+        self.initCerebro()
         
         # create controller
-        # self.createController()
+        self.createController()
         
         # create workers
         # self.createWorkers()
