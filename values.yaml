@@ -45,17 +45,18 @@ cluster:
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
 workerETL:
-  checkpointPath: /data/cerebro_checkpoint_storage
-  controllerDataPath: /data/cerebro_data_storage
+  checkpointMountPath: /data/cerebro_checkpoint_storage
   workerDataPath: /cerebro_data_storage_worker
   nworkers: 16
   port: 8787
   schedulerIP: 10.100.135.183
   workerContainerPort: 8787
   workerImage: prsridha/cerebro-kube:latest
+  workerDataHostPath: /mnt/cerebro_data_storage_worker
 workerMOP:
-  checkpointPath: /data/cerebro_checkpoint_storage
-  controllerDataPath: /data/cerebro_data_storage
+  checkpointMountPath: /data/cerebro_checkpoint_storage
+  dataMountPath: /data/cerebro_data_storage
   workerDataPath: /cerebro_data_storage_worker
   rcpport: 7777
   workerImage: prsridha/cerebro-kube:latest
+  workerDataHostPath: /mnt/cerebro_data_storage_worker

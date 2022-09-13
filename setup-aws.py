@@ -13,11 +13,12 @@ from fabric2 import ThreadingGroup, Connection
 # Create an IAM user with Admin permissions + Access Key - Programmatic access. Save the .csv cred file
 # Install aws cli on local and configure it using the downloaded cred file
 # Create a key-pair on EC2 with name cerebro-kube-kp
-# Create an ssh-key on local
+# Create an ssh-key on local for git
 # Install eksctl CLI
 # Install kubectl
 # Install docker
 # Install helm
+# Run oneTime() given below
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def run(cmd, shell=True, capture_output=True, text=True):
@@ -544,6 +545,78 @@ class CerebroInstaller:
     def createWorkers(self):
         # load fabric connections
         self.initializeFabric()
+        
+        # create Cerebro directories on the worker nodes
+        home = "/home/ec2-user"
+        self.s.run("mkdir -p {}/user-repo".format(home))
+        self.s.run("mkdir -p {}/cerebro-repo".format(home))
+        
+        # create ETL Workers
+        cmds = [
+            "mkdir -p charts",
+            "helm create charts/cerebro-worker-etl",
+            "rm -rf charts/cerebro-worker-etl/templates/*",
+            "cp worker-etl/* charts/cerebro-worker-etl/templates/",
+            "cp values.yaml charts/cerebro-worker-etl/values.yaml",
+        ]
+        c = "helm install --namespace={n} worker-etl-{id} charts/cerebro-worker-etl --set workerID={id}"
+        
+        for i in range(1, self.num_workers + 1):
+            cmds.append(
+                c.format(id=i, n=self.kube_namespace))
+        
+        for cmd in cmds:
+            time.sleep(0.5)
+            run(cmd, capture_output=False)
+        run("rm -rf charts")
+        
+        print("Waiting for ETL Worker start-up")
+        label = "type=cerebro-worker-etl"
+        while not checkPodStatus(label, self.kube_namespace):
+            time.sleep(1)
+        
+        print("ETL-Workers created successfully")
+        
+        # Create MOP Workers
+        cmds = [
+            "mkdir -p charts",
+            "helm create charts/cerebro-worker-mop",
+            "rm -rf charts/cerebro-worker-mop/templates/*",
+            "cp worker-mop/* charts/cerebro-worker-mop/templates/",
+            "cp values.yaml charts/cerebro-worker-mop/values.yaml",
+        ]
+        c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id}"
+        
+        for i in range(1, self.num_workers + 1):
+            cmds.append(
+                c.format(id=i, n=self.kube_namespace))
+        
+        for cmd in cmds:
+            time.sleep(0.5)
+            run(cmd, capture_output=False)
+        run("rm -rf charts")
+        
+        print("Waiting for MOP Worker start-up")
+        label = "type=cerebro-worker-mop"
+        while not checkPodStatus(label, self.kube_namespace):
+            time.sleep(1)
+        
+        # write worker_ips to references
+        cmd = "kubectl get service -o json -l {}".format(label)
+        output = json.loads(run(cmd))
+        ips = []
+        for pod in output["items"]:
+            ip = "http://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
+            ips.append(ip)
+
+        Path("reference").mkdir(parents=True, exist_ok=True)
+        with open("reference/ml_worker_ips.txt", "w+") as f:
+            f.write(
+                "Model Hopper Worker IPs:\n")
+            f.write("\n".join(ips))
+            f.write("\n\n" + str(ips))
+        
+        print("Created the workers")
 
     def deleteCluster(self):
         fs_id = self.values_yaml["cluster"]["efsFileSystemID"]

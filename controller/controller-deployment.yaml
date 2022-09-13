@@ -74,13 +74,6 @@ spec:
         imagePullPolicy: Always
         command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
         workingDir: /cerebro-repo/cerebro-kube
-        # resources:
-        #   requests:
-        #     memory: "64Mi"
-        #     cpu: "250m"
-        #   limits:
-        #     memory: "128Mi"
-        #     cpu: "500m"
         env:
         - name: POD_TYPE
           value: "controller"
