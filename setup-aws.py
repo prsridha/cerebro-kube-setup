@@ -142,7 +142,7 @@ class CerebroInstaller:
         cmd1 = """
         aws iam create-policy \
             --policy-name AmazonEKS_EFS_CSI_Driver_Policy \
-            --policy-document file://init_cluster/iam-policy-example.json
+            --policy-document file://init_cluster/iam-policy-eks-efs.json
         """
         run(cmd1)
         print("Created IAM policy")
@@ -155,7 +155,7 @@ class CerebroInstaller:
         # add OIDC to IAM role
         cmd4 = "eksctl utils associate-iam-oidc-provider --cluster {} --approve".format(cluster_name)
         run(cmd4, capture_output=False)
-        time.sleep(1)
+        time.sleep(3)
         
         # create service account
         cmd5 = "aws sts get-caller-identity"
@@ -172,7 +172,7 @@ class CerebroInstaller:
         """.format(cluster_name, account_id, region)
         run(cmd6, capture_output=False)
         print("Created IAM ServiceAccount")
-        time.sleep(1)
+        time.sleep(3)
         
         # install efs csi driver
         cmd7 = """
@@ -196,13 +196,11 @@ class CerebroInstaller:
         cmd8 = 'aws eks describe-cluster --name {} --query "cluster.resourcesVpcConfig.vpcId" --output text'.format(cluster_name)
         vpc_id = run(cmd8)
         print("VPC ID:", vpc_id)
-        time.sleep(1)
         
         # get CIDR range
         cmd3 = 'aws ec2 describe-vpcs --vpc-ids {} --query "Vpcs[].CidrBlock" --output text'.format(vpc_id)
         cidr_range = run(cmd3)
         print("CIDR Range:", cidr_range)
-        time.sleep(1)
         
         # create security group for inbound NFS traffic
         cmd4 = 'aws ec2 create-security-group --group-name efs-nfs-sg --description "Allow NFS traffic for EFS" --vpc-id {}'.format(vpc_id)
@@ -226,6 +224,7 @@ class CerebroInstaller:
         for i in range(4):
             run(cmd6)
         print("Created 4 EFS file systems")
+        time.sleep(5)
         
         # get file system ids
         file_systems = []
@@ -241,6 +240,7 @@ class CerebroInstaller:
         out = run(cmd8)
         subnets_list = json.loads(out)
         print("Subnets list:", str(subnets_list))
+        time.sleep(5)
         
         # create mount targets
         cmd9 = """
@@ -263,8 +263,8 @@ class CerebroInstaller:
         print("Created Storage Class")
         
         # update file system id to values.yaml
-        self.values_yaml["cluster"]["efsFileSystemID"] = {
-            "checkpointFSId": file_systems[0],
+        self.values_yaml["cluster"]["efsFileSystemIds"] = {
+            "checkpointFsId": file_systems[0],
             "dataFsId": file_systems[1],
             "metricsFsId": file_systems[2],
             "configFsId": file_systems[3]
@@ -506,19 +506,18 @@ class CerebroInstaller:
         self.initializeFabric()
         
         cmds = [
-            "mkdir charts"
+            "mkdir charts",
             "helm create charts/cerebro-controller",
             "rm -rf charts/cerebro-controller/templates/*",
             "cp ./controller/* charts/cerebro-controller/templates/",
-            "cp values.yaml charts/cerebro-controller/values.yaml"
-            "helm install --namespace=cerebro controller charts/cerebro-controller/"
+            "cp values.yaml charts/cerebro-controller/values.yaml",
+            "helm install --namespace=cerebro controller charts/cerebro-controller/",
             "rm -rf charts/cerebro-controller"
         ]
 
         for cmd in cmds:
             time.sleep(1)
             out = run(cmd, capture_output=False)
-            print(out)
 
         print("Created Controller deployment")
         
@@ -557,7 +556,7 @@ class CerebroInstaller:
             "helm create charts/cerebro-worker-etl",
             "rm -rf charts/cerebro-worker-etl/templates/*",
             "cp worker-etl/* charts/cerebro-worker-etl/templates/",
-            "cp values.yaml charts/cerebro-worker-etl/values.yaml",
+            "cp values.yaml charts/cerebro-worker-etl/values.yaml"
         ]
         c = "helm install --namespace={n} worker-etl-{id} charts/cerebro-worker-etl --set workerID={id}"
         
@@ -619,8 +618,14 @@ class CerebroInstaller:
         print("Created the workers")
 
     def deleteCluster(self):
-        fs_ids = self.values_yaml["cluster"]["efsFileSystemIds"].values()
         cluster_name = self.values_yaml["cluster"]["name"]
+
+        cmd12 = "aws efs describe-file-systems --output json"
+        out = json.loads(run(cmd12))
+        fs_ids = []
+        for i in out["FileSystems"]:
+            fs_ids.append(i["FileSystemId"])
+        print("Found file systems:", str(fs_ids))
         
         def _runCommands(fn, name):
             try:
@@ -636,7 +641,7 @@ class CerebroInstaller:
             print("Deleted the cluster")
         _runCommands(_deleteCluster, "clusterDelete")
         time.sleep(3)
-        
+                
         # Delete MountTargets
         def _deleteMountTargets():
             mt_ids = []
@@ -659,7 +664,7 @@ class CerebroInstaller:
         time.sleep(5)
         
         # delete FileSystem
-        def _deleteFileSystem():
+        def _deleteFileSystem():            
             for fs_id in fs_ids:
                 cmd6 = """ aws efs delete-file-system \
                 --file-system-id {}
@@ -723,7 +728,7 @@ class CerebroInstaller:
     
     def testing(self):
         pass
-
+        
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
@@ -764,9 +769,9 @@ class CerebroInstaller:
         
         # create controller
         self.createController()
-        
+
         # create workers
-        # self.createWorkers()
+        self.createWorkers()
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
