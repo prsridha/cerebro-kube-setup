@@ -21,6 +21,7 @@ spec:
                 operator: In
                 values:
                 - node{{ .Values.workerID }}
+      serviceAccountName: s3-eks-sa
       initContainers:
       - name: git-sync-cerebro
         image: {{ .Values.controller.git.gitSyncImage }}
