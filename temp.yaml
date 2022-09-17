@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: aws-cli
+  namespace: cerebro
+spec:
+  affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cerebro/nodename
+                operator: In
+                values:
+                - node0
+  serviceAccountName: s3-eks-sa
+  containers:
+  - name: aws-cli
+    image: amazon/aws-cli:latest
+    command: [ "/bin/bash", "-c", "--" ]
+    args: [ "while true; do sleep 30; done;" ]
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - name: data
+        mountPath: /tmp
+  volumes:
+  - name: data
+    hostPath:
+          path: /home/ec2-user/temp
+          type: Directory
+  restartPolicy: Always

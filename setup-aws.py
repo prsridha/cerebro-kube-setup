@@ -145,7 +145,15 @@ class CerebroInstaller:
             --policy-document file://init_cluster/iam-policy-eks-efs.json
         """
         run(cmd1)
-        print("Created IAM policy")
+        print("Created IAM policy for EFS")
+        
+        # create iam policy for read-only s3
+        cmd11 = """aws iam create-policy \
+            --policy-name AmazonEKS_S3_Policy \
+            --policy-document file://init_cluster/iam-policy-eks-s3.json
+        """
+        run(cmd11)
+        print("Created IAM read-only policy for S3")
         
     def addStorage(self):
         region = self.values_yaml["cluster"]["region"]
@@ -261,6 +269,18 @@ class CerebroInstaller:
         cmd10 = "kubectl apply -f init_cluster/storage_class.yaml"
         run(cmd10)
         print("Created Storage Class")
+        
+        # create service account for s3
+        cmd12 = """ eksctl create iamserviceaccount \
+        --name s3-eks-sa \
+        --namespace cerebro \
+        --cluster {} \
+        --attach-policy-arn arn:aws:iam::{}:policy/AmazonEKS_S3_Policy \
+        --approve
+        """.format(cluster_name, account_id)
+        
+        run(cmd12, capture_output=False)
+        print("Created serviceaccount for S3")
         
         # update file system id to values.yaml
         self.values_yaml["cluster"]["efsFileSystemIds"] = {
@@ -728,7 +748,7 @@ class CerebroInstaller:
     
     def testing(self):
         pass
-        
+    
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
@@ -757,10 +777,11 @@ class CerebroInstaller:
         except Exception as e:
             print("Couldn't create the cluster")
             print(str(e))
+        
         # add storage
-        # self.addStorage()
+        self.addStorage()
 
-    def installCerebro(self):        
+    def installCerebro(self):
         # install Prometheus and Grafana
         self.installMetricsMonitor()
         

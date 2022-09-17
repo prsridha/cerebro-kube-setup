@@ -38,10 +38,10 @@ cluster:
   workerInstance: t3.large
   volumeSize: 80
   efsFileSystemIds:
-    checkpointFsId: fs-074ecd050697aab35
-    dataFsId: fs-09a0bb2934b2f6eaf
-    metricsFsId: fs-02986f1d1a4593ad0
-    configFsId: fs-0b07b49b293d27d25
+    checkpointFsId: fs-06ac43f2e23ced0e0
+    dataFsId: fs-0a7e1046e378d420c
+    metricsFsId: fs-0f689031647c54abf
+    configFsId: fs-0c98ccae70c79ece3
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
 workerETL:
@@ -49,7 +49,7 @@ workerETL:
   workerDataPath: /cerebro_data_storage_worker
   nworkers: 16
   port: 8787
-  schedulerIP: 10.100.171.87
+  schedulerIP: 10.100.59.185
   workerContainerPort: 8787
   workerImage: prsridha/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
