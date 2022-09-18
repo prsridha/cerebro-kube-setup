@@ -360,7 +360,7 @@ class CerebroInstaller:
         Path(home + "/reference").mkdir(parents=True, exist_ok=True)
         with open(home + "/reference/metrics_monitor_credentials.txt", "w+") as f:
             f.write(
-                "Access Grafana with this link:\nhttp://<AWS Host Name>: {}\n".format(port))
+                "Access Grafana with this link:\nhttp://{}:{}\n".format(public_dns_name, port))
             f.write("username: {}\npassword: {}".format(
                 "admin", "prom-operator"))
 
@@ -392,7 +392,7 @@ class CerebroInstaller:
         
         # create namespace, set context and setup kube-config
         cmds1 = [
-            "kubectl create namespace {}".format(self.kube_namespace),
+            # "kubectl create namespace {}".format(self.kube_namespace),
             "kubectl config set-context --current --namespace={}".format(
                 self.kube_namespace),
             "kubectl create -n {} secret generic kube-config --from-file={}".format(
@@ -461,7 +461,7 @@ class CerebroInstaller:
         pem_path = self.values_yaml["cluster"]["pemPath"]
         user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
             self.controller, pem_path, daskDashboardPort, node_port)
-        s = "Run this command on your local machine to access the Dask Dashboard : \n{}".format(
+        s = "\nRun this command on your local machine to access the Dask Dashboard : \n{}\n".format(
             user_pf_command) + "\n" + "http://localhost:{}".format(daskDashboardPort)
         
         print(s)
@@ -495,7 +495,7 @@ class CerebroInstaller:
         pem_path = self.values_yaml["cluster"]["pemPath"]
         user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
             self.controller, pem_path, users_port, node_port)
-        s = "Run this command on your local machine to access Jupyter Notebook : \n{}".format(
+        s = "\nRun this command on your local machine to access Jupyter Notebook : \n{}\n".format(
             user_pf_command) + "\n" + "http://localhost:{}/?token={}".format(users_port, jupyter_token)
         
         print(s)
@@ -513,7 +513,7 @@ class CerebroInstaller:
 
         user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
             self.controller, pem_path, users_port, node_port)
-        s = "Run this command on your local machine to access Tensorboard Dashboard : \n{}".format(
+        s = "\nRun this command on your local machine to access Tensorboard Dashboard : \n{}\n".format(
             user_pf_command) + "\n" + "http://localhost:{}".format(users_port)
         
         print(s)
@@ -748,7 +748,7 @@ class CerebroInstaller:
     
     def testing(self):
         pass
-    
+
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
