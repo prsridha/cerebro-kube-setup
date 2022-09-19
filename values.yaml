@@ -14,7 +14,7 @@ controller:
     userRepoMountPath: /user-repo
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
-    cerebroRepoBranch: main
+    cerebroRepoBranch: feature/aws-gpu
     userRepoURL: git@github.com:prsridha/coco-mop.git
     gitSyncImage: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/git-sync:latest
     image: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/cerebro-kube:latest
@@ -38,10 +38,10 @@ cluster:
   workerInstance: t3.large
   volumeSize: 80
   efsFileSystemIds:
-    checkpointFsId: fs-026435dca65d4c45a
-    dataFsId: fs-0baa167c89a83b23c
-    metricsFsId: fs-0044b5aa1d819eab6
-    configFsId: fs-01fca1c1bacd0b521
+    checkpointFsId: fs-0bef94388d054c7c9
+    dataFsId: fs-0440cbc818fe56377
+    metricsFsId: fs-0f516fba82891d191
+    configFsId: fs-0bfc7dc0408f0e26c
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
 workerETL:
@@ -49,7 +49,7 @@ workerETL:
   workerDataPath: /cerebro_data_storage_worker
   nworkers: 16
   port: 8787
-  schedulerIP: 10.100.58.70
+  schedulerIP: 10.100.30.49
   workerContainerPort: 8787
   workerImage: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker

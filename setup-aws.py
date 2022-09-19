@@ -473,13 +473,18 @@ class CerebroInstaller:
         users_port = self.values_yaml["controller"]["services"]["jupyterUserPort"]
 
         controller = getPodNames(self.kube_namespace)["controller"]
+        
+        # delete existing jupyter tokens if any
+        jyp_del = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf JUPYTER_TOKEN'".format(controller)
+        out = run(jyp_del)
+        print("Deleting preexisting Jupyter Tokens")
 
         jyp_check_cmd = "kubectl exec -t {} -c cerebro-controller-container -- ls".format(controller)
         ls_out = run(jyp_check_cmd)
         while "JUPYTER_TOKEN" not in ls_out:
             time.sleep(1)
             ls_out = run(jyp_check_cmd)
-            
+
         cmd = "kubectl exec -t {} -c cerebro-controller-container -- cat JUPYTER_TOKEN".format(controller)
         jupyter_token = run(cmd)
         
@@ -526,7 +531,7 @@ class CerebroInstaller:
         self.initializeFabric()
         
         cmds = [
-            "mkdir charts",
+            "mkdir -p charts",
             "helm create charts/cerebro-controller",
             "rm -rf charts/cerebro-controller/templates/*",
             "cp ./controller/* charts/cerebro-controller/templates/",
