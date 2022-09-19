@@ -764,18 +764,24 @@ class CerebroInstaller:
         cmd6 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(pod_names["controller"])
         for i in [cmd3, cmd4, cmd5, cmd6]:
             run(i, haltException=False)
+        cmd7 = "helm delete controller"
+        run(cmd7, haltException=False)
         print("Cleaned up Controller")
         
-        cmd7 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
-        cmd8 = "sudo rm -rf /home/ec2-user/user-repo/*"
+        cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
+        cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
         try:
-            self.conn.run(cmd7)
             self.conn.run(cmd8)
-            self.s.run(cmd7)
+            self.conn.run(cmd9)
             self.s.run(cmd8)
+            self.s.run(cmd9)
         except Exception as e:
             print("Got error: " + str(e))
         print("Deleted cerebro-repo and user-repo")
+
+        print("\nkubectl get pods:")
+        cmd = "kubectl get pods"
+        run(cmd, capture_output=False)
     
     def testing(self):
         pass
