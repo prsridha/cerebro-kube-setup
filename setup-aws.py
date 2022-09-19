@@ -545,7 +545,7 @@ class CerebroInstaller:
 
         # add all permissions to repos
         cmd1 = "sudo chmod -R 777 /home/ec2-user/cerebro-repo/cerebro-kube"
-        cmd2 = "sudo chmod -R 777 /home/ec2-user/user-repo/*"
+        cmd2 = "sudo chmod -R 777 /home/ec2-user/user-repo"
         self.conn.sudo(cmd1)
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
