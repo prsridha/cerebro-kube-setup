@@ -21,12 +21,15 @@ from fabric2 import ThreadingGroup, Connection
 # Run oneTime() given below
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-def run(cmd, shell=True, capture_output=True, text=True):
+def run(cmd, shell=True, capture_output=True, text=True, haltException=True):
     try:
         out = subprocess.run(cmd, shell=shell, capture_output=capture_output, text=text)
         # print(cmd)
         if out.stderr:
-            raise Exception("Command Error:" + str(out.stderr))
+            if haltException:
+                raise Exception("Command Error:" + str(out.stderr))
+            else:
+                print("Command Error:" + str(out.stderr))
         if capture_output:
             return out.stdout.rstrip("\n")
         else:
@@ -738,6 +741,41 @@ class CerebroInstaller:
             run(cmd11)
             print("Deleted CloudFormation Stack")
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
+    
+    def cleanUp(self):
+        pod_names = getPodNames(self.kube_namespace)
+        n_workers = self.values_yaml["cluster"]["workers"]
+        self.initializeFabric()
+        
+        # clean up Workers
+        cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
+        for pod in pod_names["mop_workers"]:
+            run(cmd1.format(pod), haltException=False)
+        helm_etl = ["worker-etl-" + str(i) for i in range(1, n_workers + 1)]
+        helm_mop = ["worker-mop-" + str(i) for i in range(1, n_workers + 1)]
+        cmd2 = "helm delete " + " ".join(helm_etl) + " " + " ".join(helm_mop)
+        run(cmd2, capture_output=False, haltException=False)
+        print("Cleaned up workers")
+        
+        # clean up Controller
+        cmd3 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_data_storage/*'".format(pod_names["controller"])
+        cmd4 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_config_storage/*'".format(pod_names["controller"])
+        cmd5 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_checkpoint_storage/*'".format(pod_names["controller"])
+        cmd6 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(pod_names["controller"])
+        for i in [cmd3, cmd4, cmd5, cmd6]:
+            run(i, haltException=False)
+        print("Cleaned up Controller")
+        
+        cmd7 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
+        cmd8 = "sudo rm -rf /home/ec2-user/user-repo/*"
+        try:
+            self.conn.run(cmd7)
+            self.conn.run(cmd8)
+            self.s.run(cmd7)
+            self.s.run(cmd8)
+        except Exception as e:
+            print("Got error: " + str(e))
+        print("Deleted cerebro-repo and user-repo")
     
     def testing(self):
         pass
