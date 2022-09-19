@@ -765,11 +765,12 @@ class CerebroInstaller:
         
         cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
         cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
+        cmd10 = "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0"
+        cmd11 = "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
         try:
-            self.conn.run(cmd8)
-            self.conn.run(cmd9)
-            self.s.run(cmd8)
-            self.s.run(cmd9)
+            for i in [cmd8, cmd9, cmd10, cmd11]:
+                self.conn.run(i)
+                self.s.run(i)
         except Exception as e:
             print("Got error: " + str(e))
         print("Deleted cerebro-repo and user-repo")
