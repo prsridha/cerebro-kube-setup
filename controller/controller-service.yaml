@@ -14,7 +14,7 @@ spec:
   - protocol: "TCP"
     port: {{ .Values.controller.services.daskPort }}
     targetPort: {{ .Values.controller.services.daskPort }}
-  type: LoadBalancer
+  type: NodePort
 ---
 apiVersion: v1
 kind: Service
