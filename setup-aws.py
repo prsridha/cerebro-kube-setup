@@ -752,23 +752,7 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
     
     def testing(self):
-        host = None
-        nodes = []
-        cmd1 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
-        reservations = json.loads(run(cmd1))
-        for reservation in reservations["Reservations"]:
-            for i in reservation["Instances"]:
-                tags = i["Tags"]
-                if "controller" in str(tags):
-                    host = i["PublicDnsName"]
-                    break
-                else:
-                    nodes.append(i["PublicDnsName"])
-        
-        self.controller = host
-        self.workers = nodes
-        
-        print(host)
+        pass
 
     # call the below functions from CLI
     def createCluster(self):
@@ -810,10 +794,10 @@ class CerebroInstaller:
         self.initCerebro()
         
         # create controller
-        # self.createController()
+        self.createController()
 
         # create workers
-        # self.createWorkers()
+        self.createWorkers()
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
