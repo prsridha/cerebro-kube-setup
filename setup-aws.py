@@ -413,18 +413,6 @@ class CerebroInstaller:
         run(rm_known_hosts)
         print("Created kubernetes secret for git")
 
-        # login to docker using tokens
-        docker_cmd = "docker login -u {} -p {}".format(self.values_yaml["creds"]["dockerUser"], self.values_yaml["creds"]["dockerToken"])
-        docker_cmd2 = "chmod -R 777 $HOME/.docker"
-        run(docker_cmd, capture_output=False)
-        run(docker_cmd2, capture_output=False)
-        print("Docker login successful")
-
-        # create docker secret
-        docker_secret_cmd = "kubectl create secret generic regcred --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson"
-        run(docker_secret_cmd)
-        print("Created kubernetes secret for Docker")
-
         home = "/home/ec2-user"
         self.conn.run("mkdir {}/cerebro-repo".format(home))
         self.conn.run("mkdir {}/user-repo".format(home))
@@ -477,7 +465,7 @@ class CerebroInstaller:
         # delete existing jupyter tokens if any
         jyp_del = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf JUPYTER_TOKEN'".format(controller)
         out = run(jyp_del)
-        print("Deleting preexisting Jupyter Tokens")
+        print("Deleting pre-existing Jupyter Tokens")
 
         jyp_check_cmd = "kubectl exec -t {} -c cerebro-controller-container -- ls".format(controller)
         ls_out = run(jyp_check_cmd)

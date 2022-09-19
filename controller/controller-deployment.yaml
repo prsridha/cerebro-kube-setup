@@ -102,8 +102,6 @@ spec:
           name: jupyter-port
         - containerPort: {{ .Values.controller.services.tensorboardPort }}
           name: tnsrbrd-port
-      imagePullSecrets:
-      - name: regcred
       volumes:
       - name: cerebro-repo
         hostPath:

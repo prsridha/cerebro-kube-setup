@@ -25,8 +25,6 @@ controller:
     jupyterPort: 8888
     jupyterUserPort: 9999
 creds:
-  dockerToken: b9cdaf75-996d-48b1-be51-a0bfba41d59f
-  dockerUser: prsridha
   gitServer: github.com
   gitToken: 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
 namespace: cerebro
@@ -49,7 +47,7 @@ workerETL:
   workerDataPath: /cerebro_data_storage_worker
   nworkers: 16
   port: 8787
-  schedulerIP: 10.100.213.246
+  schedulerIP: 10.100.153.55
   workerContainerPort: 8787
   workerImage: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker

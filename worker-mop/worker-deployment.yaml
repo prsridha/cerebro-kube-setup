@@ -90,8 +90,6 @@ spec:
           mountPath: {{ .Values.workerMOP.checkpointMountPath }}
         - name: cerebro-controller-storage
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
-      imagePullSecrets:
-      - name: regcred
       volumes:
       - name: user-repo
         hostPath:

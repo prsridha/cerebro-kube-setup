@@ -93,8 +93,6 @@ spec:
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
         ports:
         - containerPort: {{ .Values.workerETL.workerContainerPort }}
-      imagePullSecrets:
-      - name: regcred
       volumes:
       - name: user-repo
         hostPath:
