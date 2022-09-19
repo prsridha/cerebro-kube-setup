@@ -7,10 +7,9 @@ managedNodeGroups:
 - name: ng-controller
   labels:
     role: controller
-  instanceType: t3.medium
+  instanceType: t3.large
   desiredCapacity: 1
   volumeSize: 80
-  spot: true
   ssh:
     allow: true
     publicKeyName: cerebro-kube-kp
@@ -18,7 +17,7 @@ managedNodeGroups:
 - name: ng-worker
   labels:
     role: worker
-  instanceType: t3.large
+  instanceType: t3.xlarge
   desiredCapacity: 4
   volumeSize: 80
   spot: true

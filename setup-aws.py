@@ -96,7 +96,7 @@ class CerebroInstaller:
         # get controller and worker addresses
         host = None
         nodes = []
-        cmd1 = "aws ec2 describe-instances"
+        cmd1 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
         reservations = json.loads(run(cmd1))
         for reservation in reservations["Reservations"]:
             for i in reservation["Instances"]:
@@ -343,7 +343,7 @@ class CerebroInstaller:
         out = run(cmd2)
         print("Added Ingress rule in Controller SecurityGroup for Grafana port")
         
-        cmd3 = "aws ec2 describe-instances"
+        cmd3 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
         instances = json.loads(run(cmd3))
         for i in instances["Reservations"]:
             tags = i["Instances"][0]["Tags"]
@@ -752,7 +752,23 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
     
     def testing(self):
-        pass
+        host = None
+        nodes = []
+        cmd1 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
+        reservations = json.loads(run(cmd1))
+        for reservation in reservations["Reservations"]:
+            for i in reservation["Instances"]:
+                tags = i["Tags"]
+                if "controller" in str(tags):
+                    host = i["PublicDnsName"]
+                    break
+                else:
+                    nodes.append(i["PublicDnsName"])
+        
+        self.controller = host
+        self.workers = nodes
+        
+        print(host)
 
     # call the below functions from CLI
     def createCluster(self):
@@ -794,10 +810,10 @@ class CerebroInstaller:
         self.initCerebro()
         
         # create controller
-        self.createController()
+        # self.createController()
 
         # create workers
-        self.createWorkers()
+        # self.createWorkers()
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
