@@ -87,7 +87,7 @@ spec:
         - name: cerebro-data-storage-worker
           mountPath: {{ .Values.workerMOP.workerDataPath }}
         - name: cerebro-checkpoint-storage
-          mountPath: {{ .Values.controller.checkpointMountPath }}
+          mountPath: {{ .Values.controller.volumes.checkpointMountPath }}
         - name: cerebro-controller-storage
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
         - name: cerebro-metrics-storage
