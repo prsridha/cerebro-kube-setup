@@ -87,9 +87,11 @@ spec:
         - name: cerebro-data-storage-worker
           mountPath: {{ .Values.workerMOP.workerDataPath }}
         - name: cerebro-checkpoint-storage
-          mountPath: {{ .Values.workerMOP.checkpointMountPath }}
+          mountPath: {{ .Values.controller.checkpointMountPath }}
         - name: cerebro-controller-storage
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
+        - name: cerebro-metrics-storage
+          mountPath: {{ .Values.controller.volumes.metricsMountPath }}
       volumes:
       - name: user-repo
         hostPath:
@@ -109,6 +111,9 @@ spec:
       - name: cerebro-controller-storage
         persistentVolumeClaim:
           claimName: cerebro-data-pvc
+      - name: cerebro-metrics-storage
+        persistentVolumeClaim:
+          claimName: cerebro-metrics-pvc
       - name: git-secret
         secret:
           defaultMode: 256
