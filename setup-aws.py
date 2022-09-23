@@ -781,27 +781,23 @@ class CerebroInstaller:
     
     def testing(self):
         pass
-
+        
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
          
-        with open("init_cluster/eks_cluster.yaml", 'r') as yamlfile:
-            eks_cluster_yaml = yaml.safe_load(yamlfile)
+        with open("init_cluster/eks_cluster_template.yaml", 'r') as yamlfile:
+            eks_cluster_yaml = yamlfile.read()
         
-        old_name = eks_cluster_yaml["metadata"]["name"]
-        eks_cluster_yaml["metadata"]["name"] = self.values_yaml["cluster"]["name"]
-        eks_cluster_yaml["metadata"]["region"] = self.values_yaml["cluster"]["region"]
-        eks_cluster_yaml["managedNodeGroups"][0]["instanceType"] = self.values_yaml["cluster"]["controllerInstance"]
-        eks_cluster_yaml["managedNodeGroups"][0]["volumeSize"] = self.values_yaml["cluster"]["volumeSize"]
-        eks_cluster_yaml["managedNodeGroups"][1]["instanceType"] = self.values_yaml["cluster"]["workerInstance"]
-        eks_cluster_yaml["managedNodeGroups"][1]["volumeSize"] = self.values_yaml["cluster"]["volumeSize"]
-        eks_cluster_yaml["managedNodeGroups"][1]["desiredCapacity"] = self.num_workers
-        bootstrap_cmd = eks_cluster_yaml["managedNodeGroups"][1]["overrideBootstrapCommand"]
-        eks_cluster_yaml["managedNodeGroups"][1]["overrideBootstrapCommand"] = bootstrap_cmd.replace(old_name, self.values_yaml["cluster"]["name"])
-
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ name }}", self.values_yaml["cluster"]["name"])
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ region }}", self.values_yaml["cluster"]["region"])
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ controller.instanceType }}", self.values_yaml["cluster"]["controllerInstance"])
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ worker.instanceType }}", self.values_yaml["cluster"]["workerInstance"])
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ volumeSize }}", str(self.values_yaml["cluster"]["volumeSize"]))
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ desiredCapacity }}", str(self.num_workers))
+        
         with open("init_cluster/eks_cluster.yaml", "w") as yamlfile:
-            yaml.safe_dump(eks_cluster_yaml, yamlfile)
+            yamlfile.write(eks_cluster_yaml)
 
         try:
             start = time.time()

@@ -1,0 +1,34 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: {{ name }}
+  region: {{ region }}
+availabilityZones: ["ap-south-1a", "ap-south-1b"]
+managedNodeGroups:
+- name: ng-controller
+  labels:
+    role: controller
+  instanceType: {{ controller.instanceType }}
+  desiredCapacity: 1
+  volumeSize: {{ volumeSize }}
+  ssh:
+    allow: true
+    publicKeyName: cerebro-kube-kp
+- name: ng-worker
+  labels:
+    role: worker
+  instanceType: {{ worker.instanceType }}
+  desiredCapacity: {{ desiredCapacity }}
+  volumeSize: {{ volumeSize }}
+  ami: ami-0afd3b7820ccf34a0
+  availabilityZones:
+  - ap-south-1a
+  - ap-south-1b
+  spot: true
+  ssh:
+    allow: true
+    publicKeyName: cerebro-kube-kp
+  overrideBootstrapCommand: |
+    #!/bin/bash
+
+    /etc/eks/bootstrap.sh {{ name }} --container-runtime containerd
