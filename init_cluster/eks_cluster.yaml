@@ -3,6 +3,7 @@ kind: ClusterConfig
 metadata:
   name: cerebro-kube-1
   region: ap-south-1
+availabilityZones: ["ap-south-1a", "ap-south-1b"]
 managedNodeGroups:
 - name: ng-controller
   labels:
@@ -13,15 +14,18 @@ managedNodeGroups:
   ssh:
     allow: true
     publicKeyName: cerebro-kube-kp
-    enableSsm: true
-- name: ng-worker
+- name: ng-worker1
   labels:
     role: worker
-  instanceType: t3.xlarge
+  instanceType: p2.xlarge
   desiredCapacity: 4
   volumeSize: 80
+  ami: ami-0afd3b7820ccf34a0
+  availabilityZones: ["ap-south-1a", "ap-south-1b"]
   spot: true
   ssh:
     allow: true
     publicKeyName: cerebro-kube-kp
-    enableSsm: true
+  overrideBootstrapCommand: |
+    #!/bin/bash
+    /etc/eks/bootstrap.sh cerebro-kube-1 --container-runtime containerd

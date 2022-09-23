@@ -789,6 +789,7 @@ class CerebroInstaller:
         with open("init_cluster/eks_cluster.yaml", 'r') as yamlfile:
             eks_cluster_yaml = yaml.safe_load(yamlfile)
         
+        old_name = eks_cluster_yaml["metadata"]["name"]
         eks_cluster_yaml["metadata"]["name"] = self.values_yaml["cluster"]["name"]
         eks_cluster_yaml["metadata"]["region"] = self.values_yaml["cluster"]["region"]
         eks_cluster_yaml["managedNodeGroups"][0]["instanceType"] = self.values_yaml["cluster"]["controllerInstance"]
@@ -796,6 +797,8 @@ class CerebroInstaller:
         eks_cluster_yaml["managedNodeGroups"][1]["instanceType"] = self.values_yaml["cluster"]["workerInstance"]
         eks_cluster_yaml["managedNodeGroups"][1]["volumeSize"] = self.values_yaml["cluster"]["volumeSize"]
         eks_cluster_yaml["managedNodeGroups"][1]["desiredCapacity"] = self.num_workers
+        bootstrap_cmd = eks_cluster_yaml["managedNodeGroups"][1]["overrideBootstrapCommand"]
+        eks_cluster_yaml["managedNodeGroups"][1]["overrideBootstrapCommand"] = bootstrap_cmd.replace(old_name, self.values_yaml["cluster"]["name"])
 
         with open("init_cluster/eks_cluster.yaml", "w") as yamlfile:
             yaml.safe_dump(eks_cluster_yaml, yamlfile)

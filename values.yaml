@@ -33,7 +33,7 @@ cluster:
   workers: 4
   region: ap-south-1
   controllerInstance: t3.large
-  workerInstance: t3.xlarge
+  workerInstance: p2.xlarge
   volumeSize: 80
   efsFileSystemIds:
     checkpointFsId: fs-03bc6663b8686bf31
@@ -46,7 +46,7 @@ workerETL:
   workerDataPath: /cerebro_data_storage_worker
   nworkers: 16
   port: 8787
-  schedulerIP: 10.100.196.33
+  schedulerIP: 10.100.93.172
   workerContainerPort: 8787
   workerImage: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
