@@ -1,6 +1,5 @@
-dask[complete]
-jupyter-server-proxy
 notebook
+dask[complete]
 nbconvert
 pandas
 fabric

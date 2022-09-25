@@ -1,4 +1,4 @@
-FROM python:3.7
+FROM nvidia/cuda:11.6.0-base-ubuntu20.04
 
 RUN apt-get update
 RUN apt-get install -y curl
