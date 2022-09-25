@@ -1,5 +1,4 @@
 notebook
-dask[complete]
 nbconvert
 pandas
 fabric
@@ -12,3 +11,4 @@ numpy
 torch
 torchvision
 nltk
+dask-cuda==22.6.0
