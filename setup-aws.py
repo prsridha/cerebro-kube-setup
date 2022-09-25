@@ -464,6 +464,11 @@ class CerebroInstaller:
         users_port = self.values_yaml["controller"]["services"]["jupyterUserPort"]
 
         controller = getPodNames(self.kube_namespace)["controller"]
+        
+        # delete existing jupyter tokens if any
+        jyp_del = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf JUPYTER_TOKEN'".format(controller)
+        run(jyp_del)
+        print("Deleting preexisting Jupyter Tokens")
 
         jyp_check_cmd = "kubectl exec -t {} -c cerebro-controller-container -- ls".format(controller)
         ls_out = run(jyp_check_cmd)
