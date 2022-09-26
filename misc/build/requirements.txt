@@ -480,5 +480,7 @@ zipp==3.8.1
     #   importlib-metadata
     #   importlib-resources
 
+bokeh==2.4.3
+
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
