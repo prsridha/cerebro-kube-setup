@@ -71,9 +71,6 @@ spec:
         imagePullPolicy: Always
         command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
         workingDir: /cerebro-repo/cerebro-kube
-        resources:
-          limits:
-            nvidia.com/gpu: 1
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
