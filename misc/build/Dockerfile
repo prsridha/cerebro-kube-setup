@@ -11,3 +11,6 @@ COPY requirements.txt .
 
 # install base requirements
 RUN pip install -r requirements.txt
+
+# install ML requirements with CUDA specific version
+RUN pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113

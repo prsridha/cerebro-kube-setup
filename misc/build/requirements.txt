@@ -412,12 +412,6 @@ toolz==0.12.0
     #   dask
     #   distributed
     #   partd
-torch==1.12.1
-    # via
-    #   -r requirements.txt
-    #   torchvision
-torchvision==0.13.1
-    # via -r requirements.txt
 tornado==6.2
     # via
     #   distributed
