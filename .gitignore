@@ -130,3 +130,4 @@ dmypy.json
 .DS_Store
 
 /reference
+init_cluster/eks_cluster.yaml
