@@ -296,6 +296,14 @@ class CerebroInstaller:
             yaml.safe_dump(self.values_yaml, f)
         print("Saved FileSystem ID in values.yaml")
    
+    def addLocalDNSCache(self):
+        self.initializeFabric()
+        
+        # run local_dns script
+        self.s.sudo("./init_cluster/local_dns.sh")
+        
+        print("Created Local DNS Cache on worker nodes")
+        
     def installMetricsMonitor(self):
         # load fabric connections
         self.initializeFabric()
@@ -420,6 +428,29 @@ class CerebroInstaller:
         self.conn.run("mkdir {}/cerebro-repo".format(home))
         self.conn.run("mkdir {}/user-repo".format(home))
         print("Created directories for cerebro repos")
+
+        # add node local DNS cache
+        cmd2 = "kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}"
+        kubedns = run(cmd2)
+        domain = "cluster.local"
+        localdns = self.values_yaml["cluster"]["nodeLocalListenIP"]
+        
+        print(kubedns)
+        print(domain)
+        print(localdns)
+        
+        with open("init_cluster/nodelocaldns_template.yaml", "r") as f:
+            yml = f.read()
+            yml = yml.replace("__PILLAR__LOCAL__DNS__", localdns)
+            yml = yml.replace("__PILLAR__DNS__DOMAIN__", domain)
+            yml = yml.replace("__PILLAR__DNS__SERVER__", kubedns)
+            
+        with open("init_cluster/nodelocaldns.yaml", "w") as f:
+            f.write(yml)
+        
+        cmd3 = "kubectl apply -f init_cluster/nodelocaldns.yaml"
+        run(cmd3, capture_output=False)
+        
     
     def addDaskMeta(self):
         # write scheduler IP to yaml file
@@ -817,14 +848,17 @@ class CerebroInstaller:
         
         # add storage
         self.addStorage()
+        
+        # add Local DNS Cache
+        self.addLocalDNSCache()
 
-    def installCerebro(self):
         # install Prometheus and Grafana
         self.installMetricsMonitor()
         
         # initialize basic cerebro components
         self.initCerebro()
-        
+
+    def installCerebro(self):
         # create controller
         self.createController()
 
