@@ -1,3 +1,5 @@
+NAMESERVER=169.254.169.253
+
 # Install dnsmasq package
 yum install -y dnsmasq
 
