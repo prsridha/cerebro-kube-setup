@@ -302,9 +302,10 @@ class CerebroInstaller:
    
     def addLocalDNSCache(self):
         self.initializeFabric()
-        
+        self.s.run("mkdir -p /home/ec2-user/init_cluster")
+        self.s.put("init_cluster/local_dns.sh", "/home/ec2-user/init_cluster")
         # run local_dns script
-        self.s.sudo("./init_cluster/local_dns.sh")
+        self.s.sudo("/bin/bash /home/ec2-user/init_cluster/local_dns.sh")
         
         print("Created Local DNS Cache on worker nodes")
         
@@ -816,7 +817,7 @@ class CerebroInstaller:
     
     def testing(self):
         pass
-        
+
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
