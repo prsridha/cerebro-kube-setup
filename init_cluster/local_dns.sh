@@ -1,6 +1,9 @@
 # Install dnsmasq package
 yum install -y dnsmasq
 
+# Install dnsutils for dig
+yum install -y bind-utils
+
 # Create the required User and Group
 groupadd -r dnsmasq
 useradd -r -g dnsmasq dnsmasq
