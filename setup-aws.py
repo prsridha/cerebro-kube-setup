@@ -435,10 +435,6 @@ class CerebroInstaller:
         domain = "cluster.local"
         localdns = self.values_yaml["cluster"]["nodeLocalListenIP"]
         
-        print(kubedns)
-        print(domain)
-        print(localdns)
-        
         with open("init_cluster/nodelocaldns_template.yaml", "r") as f:
             yml = f.read()
             yml = yml.replace("__PILLAR__LOCAL__DNS__", localdns)
