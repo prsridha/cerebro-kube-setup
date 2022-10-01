@@ -186,6 +186,8 @@ class CerebroInstaller:
         time.sleep(3)
         
         # install efs csi driver
+        cmd13 = "helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver/"
+        run(cmd13)
         cmd7 = """
         helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver \
             --namespace kube-system \
