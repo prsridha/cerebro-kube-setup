@@ -450,7 +450,6 @@ class CerebroInstaller:
         
         cmd3 = "kubectl apply -f init_cluster/nodelocaldns.yaml"
         run(cmd3, capture_output=False)
-        
     
     def addDaskMeta(self):
         # write scheduler IP to yaml file
@@ -846,7 +845,7 @@ class CerebroInstaller:
             print("Couldn't create the cluster")
             print(str(e))
         
-        # add storage
+        # add EFS storage
         self.addStorage()
         
         # add Local DNS Cache
