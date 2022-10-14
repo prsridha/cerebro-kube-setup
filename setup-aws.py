@@ -322,7 +322,7 @@ class CerebroInstaller:
             "kubectl create namespace prom-metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
             "helm repo update",
-            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --version 30.1.0 --set nodeSelector.'cerebro/nodename'={}".format(
+            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --set nodeSelector.'cerebro/nodename'={}".format(
                 node)
         ]
 
