@@ -2,6 +2,7 @@ import os
 import json
 import time
 import fire
+import webbrowser
 import subprocess
 import oyaml as yaml
 from pathlib import Path
@@ -379,6 +380,10 @@ class CerebroInstaller:
                 "Access Grafana with this link:\nhttp://{}:{}\n".format(public_dns_name, port))
             f.write("username: {}\npassword: {}".format(
                 "admin", "prom-operator"))
+   
+        # open URL
+        url = "http://{}:{}".format(public_dns_name, port)
+        webbrowser.open(url)
 
     def initCerebro(self):
         # load fabric connections
@@ -530,6 +535,17 @@ class CerebroInstaller:
         with open("reference/jupyter_command.txt", "w+") as f:
             f.write(s)
             
+        # forward port and open Jupyter URL
+        pid = run("lsof -ti:9999")
+        if pid:
+            run("kill -QUIT {}".format(pid))
+        
+        prt_frwd = "ssh -oStrictHostKeyChecking=no ec2-user@{} -i {} -N -L {}:localhost:{} &".format(
+            self.controller, pem_path, users_port, node_port)
+        run(prt_frwd)
+        url = "http://localhost:{}/?token={}".format(users_port, jupyter_token)
+        webbrowser.open(url)
+            
         # add tensorboard port
         users_port = self.values_yaml["controller"]["services"]["tensorboardPort"]
         label = "serviceApp=tensorboard"
@@ -547,6 +563,16 @@ class CerebroInstaller:
         Path("reference").mkdir(parents=True, exist_ok=True)
         with open("reference/tensorboard_command.txt", "w+") as f:
             f.write(s)
+            
+        # forward port and open Tensorboard URL
+        pid = run("lsof -ti:6006")
+        if pid:
+            run("kill -QUIT {}".format(pid))
+        prt_frwd = "ssh -oStrictHostKeyChecking=no ec2-user@{} -i {} -N -L {}:localhost:{}".format(
+            self.controller, pem_path, users_port, node_port)
+        run(prt_frwd)
+        url = "http://localhost:{}".format(users_port)
+        webbrowser.open(url)
     
     def createController(self):
         # load fabric connections
