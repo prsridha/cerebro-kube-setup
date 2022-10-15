@@ -2,8 +2,10 @@ import os
 import json
 import time
 import fire
+import psutil
 import webbrowser
 import subprocess
+from git import Repo
 import oyaml as yaml
 from pathlib import Path
 from kubernetes import client, config
@@ -316,23 +318,95 @@ class CerebroInstaller:
         
         config.load_kube_config()
         v1 = client.CoreV1Api()
-
+        
+        dir = "init_cluster/metrics_monitor"
+        Path(dir).mkdir(parents=True, exist_ok=True)
+        
         node = "node0"
-
+        prometheus_port = 30090
+        
+        # pull Prometheus values file
+        prom_path = "init_cluster/metrics_monitor/kube-prometheus-stack.values"
+        
         cmds = [
-            "kubectl create namespace prom-metrics",
+            "kubectl create namespace metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
             "helm repo update",
-            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --set nodeSelector.'cerebro/nodename'={}".format(
-                node)
+            "helm inspect values prometheus-community/kube-prometheus-stack > {}".format(prom_path)
         ]
 
         for cmd in cmds:
             out = run(cmd)
             print(out)
+        
+        gpu_metrics_conf = """
+        additionalScrapeConfigs:
+        - job_name: gpu-metrics
+          scrape_interval: 1s
+          metrics_path: /metrics
+          scheme: http
+          kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+              - gpu-operator-resources
+          relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            action: replace
+            target_label: kubernetes_node
+        """
+        
+        gpu_metrics_conf = yaml.safe_load(gpu_metrics_conf)
+        
+        with open(prom_path, "r") as f:
+            prom_file_contents = yaml.safe_load(f)
+            prom_file_contents["prometheus"]["service"]["type"] = "NodePort"
+            prom_file_contents["alertmanager"]["service"]["nodePort"] = prometheus_port
+            prom_file_contents["prometheus"]["prometheusSpec"]["serviceMonitorSelectorNilUsesHelmValues"] = "false"
+            prom_file_contents["prometheus"]["prometheusSpec"]["additionalScrapeConfigs"] = gpu_metrics_conf["additionalScrapeConfigs"]
+            
+        with open(prom_path, "w") as f:
+            yaml.safe_dump(prom_file_contents, f)
+        
+        cmd1 = """
+        helm install prom prometheus-community/kube-prometheus-stack \
+        --namespace metrics \
+        --values {}
+        """.format(prom_path)
+        
+        print("Installing Prometheus and Grafana...")
+        run(cmd1, capture_output=False)
+        
+        # install DCGM exporter
+        dcgm_path = "init_cluster/metrics_monitor/dcgm"
+        Path(dcgm_path).mkdir(parents=True, exist_ok=True)
+        Repo.clone_from("https://github.com/NVIDIA/gpu-monitoring-tools.git", dcgm_path)
+        
+        # modification to the repo
+        path1 = os.path.join(dcgm_path, "etc/dcgm-exporter/default-counters.csv")
+        path2 = os.path.join(dcgm_path, "etc/dcgm-exporter/dcp-metrics-included.csv")
+        path3 = os.path.join(dcgm_path, "deployment/dcgm-exporter/templates/daemonset.yaml")
+        
+        with open(path1, "r") as f1, open(path2, "r") as f2, open(path3, "r") as f3:
+            path1_s = f1.read()
+            path2_s = f2.read()
+            path3_s = f3.read()
+            
+            path1_s = path1_s.replace("# DCGM_FI_DEV_GPU_UTIL", "DCGM_FI_DEV_GPU_UTIL")
+            path2_s = path2_s.replace("# DCGM_FI_DEV_GPU_UTIL", "DCGM_FI_DEV_GPU_UTIL")
+            path3_s = path3_s.replace("initialDelaySeconds: 5", "initialDelaySeconds: 30")
+        
+        with open(path1, "w") as f1, open(path2, "w") as f2, open(path3, "w") as f3:
+            f1.write(path1_s)
+            f2.write(path2_s)
+            f3.write(path3_s)
+        
+        print("Installing DCGM Exporter...")
+        cmd2 = "(cd {}/deployment ; helm install --generate-name --namespace metrics dcgm-exporter)".format(dcgm_path)
+        run(cmd2, capture_output=False)
 
         name = "prom-grafana"
-        ns = "prom-metrics"
+        ns = "metrics"
         body = v1.read_namespaced_service(namespace=ns, name=name)
         body.spec.type = "NodePort"
         v1.patch_namespaced_service(name, ns, body)
@@ -340,7 +414,7 @@ class CerebroInstaller:
         svc = v1.read_namespaced_service(namespace=ns, name=name)
         port = svc.spec.ports[0].node_port
         
-        # add ingress rule for port on security group
+        # add ingress rule for ports on security group
         cluster_name = self.values_yaml["cluster"]["name"]
         
         cmd1 = "aws ec2 describe-security-groups"
@@ -354,11 +428,12 @@ class CerebroInstaller:
         --protocol tcp \
         --port {} \
         --cidr 0.0.0.0/0
-        """.format(controller_sg_id, port)
+        """
         
-        print(cmd2)
-        out = run(cmd2)
-        print("Added Ingress rule in Controller SecurityGroup for Grafana port")
+        out = run(cmd2.format(controller_sg_id, port))
+        out = run(cmd2.format(controller_sg_id, prometheus_port))
+
+        print("Added Ingress rules in Controller SecurityGroup for Grafana and Prometheus ports")
         
         cmd3 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
         instances = json.loads(run(cmd3))
@@ -372,16 +447,24 @@ class CerebroInstaller:
         print(
             "Access Grafana with this link:\nhttp://{}:{}".format(public_dns_name, port))
         print("username: {}\npassword: {}".format("admin", "prom-operator"))
+        
+        print(
+            "Access Prometheus with this link:\nhttp://{}:{}".format(public_dns_name, prometheus_port))
 
         home = self.home
         Path(home + "/reference").mkdir(parents=True, exist_ok=True)
         with open(home + "/reference/metrics_monitor_credentials.txt", "w+") as f:
             f.write(
                 "Access Grafana with this link:\nhttp://{}:{}\n".format(public_dns_name, port))
-            f.write("username: {}\npassword: {}".format(
+            f.write("username: {}\npassword: {}\n".format(
                 "admin", "prom-operator"))
-   
-        # open URL
+            f.write(
+                "\nAccess Prometheus with this link:\nhttp://{}:{}\n".format(public_dns_name, prometheus_port))
+
+        # delete temporarily created files
+        cmd = "rm -rf {}".format(dir)
+        
+        # open Grafana URL
         url = "http://{}:{}".format(public_dns_name, port)
         webbrowser.open(url)
 
@@ -535,14 +618,16 @@ class CerebroInstaller:
         with open("reference/jupyter_command.txt", "w+") as f:
             f.write(s)
             
-        # forward port and open Jupyter URL
+        # TODO: forward port and open Jupyter URL
         pid = run("lsof -ti:9999")
         if pid:
-            run("kill -QUIT {}".format(pid))
+            for i in pid.split("\n"):
+                p = psutil.Process(int(i))
+                p.terminate()
         
         prt_frwd = "ssh -oStrictHostKeyChecking=no ec2-user@{} -i {} -N -L {}:localhost:{} &".format(
             self.controller, pem_path, users_port, node_port)
-        run(prt_frwd)
+        subprocess.Popen(prt_frwd.split(" "))
         url = "http://localhost:{}/?token={}".format(users_port, jupyter_token)
         webbrowser.open(url)
             
@@ -564,15 +649,19 @@ class CerebroInstaller:
         with open("reference/tensorboard_command.txt", "w+") as f:
             f.write(s)
             
-        # forward port and open Tensorboard URL
+        # TODO: forward port and open Tensorboard URL
         pid = run("lsof -ti:6006")
         if pid:
-            run("kill -QUIT {}".format(pid))
+            for i in pid.split("\n"):
+                p = psutil.Process(int(i))
+                p.terminate()
         prt_frwd = "ssh -oStrictHostKeyChecking=no ec2-user@{} -i {} -N -L {}:localhost:{}".format(
             self.controller, pem_path, users_port, node_port)
-        run(prt_frwd)
+        subprocess.Popen(prt_frwd.split(" "))
         url = "http://localhost:{}".format(users_port)
         webbrowser.open(url)
+        
+        print("Added JupyterNotebook and")
     
     def createController(self):
         # load fabric connections
