@@ -618,7 +618,7 @@ class CerebroInstaller:
         with open("reference/jupyter_command.txt", "w+") as f:
             f.write(s)
             
-        # TODO: forward port and open Jupyter URL
+        # forward port and open Jupyter URL
         pid = run("lsof -ti:9999")
         if pid:
             for i in pid.split("\n"):
@@ -628,6 +628,8 @@ class CerebroInstaller:
         prt_frwd = "ssh -oStrictHostKeyChecking=no ec2-user@{} -i {} -N -L {}:localhost:{} &".format(
             self.controller, pem_path, users_port, node_port)
         subprocess.Popen(prt_frwd.split(" "))
+        
+        time.sleep(2)
         url = "http://localhost:{}/?token={}".format(users_port, jupyter_token)
         webbrowser.open(url)
             
@@ -649,7 +651,7 @@ class CerebroInstaller:
         with open("reference/tensorboard_command.txt", "w+") as f:
             f.write(s)
             
-        # TODO: forward port and open Tensorboard URL
+        # forward port and open Tensorboard UR
         pid = run("lsof -ti:6006")
         if pid:
             for i in pid.split("\n"):
@@ -658,6 +660,8 @@ class CerebroInstaller:
         prt_frwd = "ssh -oStrictHostKeyChecking=no ec2-user@{} -i {} -N -L {}:localhost:{}".format(
             self.controller, pem_path, users_port, node_port)
         subprocess.Popen(prt_frwd.split(" "))
+        
+        time.sleep(2)
         url = "http://localhost:{}".format(users_port)
         webbrowser.open(url)
         
