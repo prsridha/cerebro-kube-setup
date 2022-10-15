@@ -326,51 +326,21 @@ class CerebroInstaller:
         prometheus_port = 30090
         
         # pull Prometheus values file
-        prom_path = "init_cluster/metrics_monitor/kube-prometheus-stack.values"
+        prom_path = "init_cluster/kube-prometheus-stack.values"
         
         cmds = [
-            "kubectl create namespace metrics",
+            "kubectl create namespace prom-metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
-            "helm repo update",
-            "helm inspect values prometheus-community/kube-prometheus-stack > {}".format(prom_path)
+            "helm repo update"
         ]
 
         for cmd in cmds:
             out = run(cmd)
             print(out)
         
-        gpu_metrics_conf = """
-        additionalScrapeConfigs:
-        - job_name: gpu-metrics
-          scrape_interval: 1s
-          metrics_path: /metrics
-          scheme: http
-          kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names:
-              - gpu-operator-resources
-          relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_node_name]
-            action: replace
-            target_label: kubernetes_node
-        """
-        
-        gpu_metrics_conf = yaml.safe_load(gpu_metrics_conf)
-        
-        with open(prom_path, "r") as f:
-            prom_file_contents = yaml.safe_load(f)
-            prom_file_contents["prometheus"]["service"]["type"] = "NodePort"
-            prom_file_contents["alertmanager"]["service"]["nodePort"] = prometheus_port
-            prom_file_contents["prometheus"]["prometheusSpec"]["serviceMonitorSelectorNilUsesHelmValues"] = "false"
-            prom_file_contents["prometheus"]["prometheusSpec"]["additionalScrapeConfigs"] = gpu_metrics_conf["additionalScrapeConfigs"]
-            
-        with open(prom_path, "w") as f:
-            yaml.safe_dump(prom_file_contents, f)
-        
         cmd1 = """
         helm install prom prometheus-community/kube-prometheus-stack \
-        --namespace metrics \
+        --namespace prom-metrics \
         --values {}
         """.format(prom_path)
         
@@ -402,11 +372,11 @@ class CerebroInstaller:
             f3.write(path3_s)
         
         print("Installing DCGM Exporter...")
-        cmd2 = "(cd {}/deployment ; helm install --generate-name --namespace metrics dcgm-exporter)".format(dcgm_path)
+        cmd2 = "(cd {}/deployment ; helm install --generate-name --namespace prom-metrics dcgm-exporter)".format(dcgm_path)
         run(cmd2, capture_output=False)
 
         name = "prom-grafana"
-        ns = "metrics"
+        ns = "prom-metrics"
         body = v1.read_namespaced_service(namespace=ns, name=name)
         body.spec.type = "NodePort"
         v1.patch_namespaced_service(name, ns, body)
@@ -463,6 +433,7 @@ class CerebroInstaller:
 
         # delete temporarily created files
         cmd = "rm -rf {}".format(dir)
+        run(cmd)
         
         # open Grafana URL
         url = "http://{}:{}".format(public_dns_name, port)
