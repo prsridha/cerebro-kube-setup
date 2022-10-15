@@ -78,8 +78,6 @@ spec:
           value: "etl"
         - name: DASK_SCHEDULER_IP
           value: "{{ .Values.workerETL.schedulerIP }}"
-        - name: NUM_DASK_WORKERS
-          value: "{{ .Values.workerETL.nworkers }}"
         volumeMounts:
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
