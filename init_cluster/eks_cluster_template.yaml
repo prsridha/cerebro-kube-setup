@@ -3,7 +3,7 @@ kind: ClusterConfig
 metadata:
   name: {{ name }}
   region: {{ region }}
-availabilityZones: ["ap-south-1a", "ap-south-1b"]
+availabilityZones: ["us-west-1b", "us-west-1c"]
 managedNodeGroups:
 - name: ng-controller
   labels:
@@ -20,10 +20,10 @@ managedNodeGroups:
   instanceType: {{ worker.instanceType }}
   desiredCapacity: {{ desiredCapacity }}
   volumeSize: {{ volumeSize }}
-  ami: ami-0df14ac086f64419f
+  ami: ami-0d2498f26d22a3857
   availabilityZones:
-  - ap-south-1a
-  - ap-south-1b
+  - us-west-1b
+  - us-west-1c
   spot: true
   ssh:
     allow: true

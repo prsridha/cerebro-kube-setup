@@ -29,9 +29,9 @@ creds:
   gitToken: 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
 namespace: cerebro
 cluster:
-  name: cerebro-kube-big
+  name: cerebro-kube-big-1
   workers: 8
-  region: ap-south-1
+  region: us-west-1
   controllerInstance: t3.xlarge
   workerInstance: g4dn.8xlarge
   volumeSize: 200
