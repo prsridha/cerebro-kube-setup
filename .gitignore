@@ -131,3 +131,4 @@ dmypy.json
 
 /reference
 init_cluster/eks_cluster.yaml
+init_cluster/nodelocaldns.yaml

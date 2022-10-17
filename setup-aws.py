@@ -89,7 +89,7 @@ def getPodNames(namespace):
 
 class CerebroInstaller:
     def __init__(self):
-        self.home = "/Users/pradsrid/Mine/Masters/Research/Cerebro/cerebro-kube-setup"
+        self.home = "."
         self.values_yaml = None
         self.kube_namespace = "cerebro"
         
