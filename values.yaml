@@ -16,8 +16,8 @@ controller:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
     cerebroRepoBranch: feature/aws-gpu
     userRepoURL: git@github.com:prsridha/coco-mop.git
-    gitSyncImage: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/git-sync:latest
-    image: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/cerebro-kube:latest
+    gitSyncImage: 782408612084.dkr.ecr.us-west-1.amazonaws.com/git-sync:latest
+    image: 782408612084.dkr.ecr.us-west-1.amazonaws.com/cerebro-kube:latest
   services:
     daskDashboardPort: 8787
     daskPort: 8786
@@ -29,30 +29,30 @@ creds:
   gitToken: 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
 namespace: cerebro
 cluster:
-  name: cerebro-kube-big-1
+  name: cerebro-kube-big-2
   workers: 8
   region: us-west-1
   controllerInstance: t3.xlarge
   workerInstance: g4dn.8xlarge
   volumeSize: 200
   efsFileSystemIds:
-    checkpointFsId: fs-078215e7e8f7182a7
-    dataFsId: fs-0b6c648c854748cd9
-    metricsFsId: fs-051d24af8cff604a0
-    configFsId: fs-0dd3094a5b19d557e
+    checkpointFsId: fs-09475b857dbec962c
+    dataFsId: fs-02fc8f99a1ddab963
+    metricsFsId: fs-04dd8873f9545905d
+    configFsId: fs-0f0ea0405556e8a6d
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   nodeLocalListenIP: 169.254.0.0
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
   port: 8787
-  schedulerIP: 10.100.251.242
+  schedulerIP: 10.100.95.110
   workerContainerPort: 8787
-  workerImage: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/cerebro-kube:latest
+  workerImage: 782408612084.dkr.ecr.us-west-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
 workerMOP:
   dataMountPath: /data/cerebro_data_storage
   workerDataPath: /cerebro_data_storage_worker
   rcpport: 7777
-  workerImage: 782408612084.dkr.ecr.ap-south-1.amazonaws.com/cerebro-kube:latest
+  workerImage: 782408612084.dkr.ecr.us-west-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
