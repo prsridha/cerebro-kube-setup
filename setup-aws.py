@@ -921,6 +921,7 @@ class CerebroInstaller:
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ worker.instanceType }}", self.values_yaml["cluster"]["workerInstance"])
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ volumeSize }}", str(self.values_yaml["cluster"]["volumeSize"]))
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ desiredCapacity }}", str(self.num_workers))
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ workerSpot }}", str(self.values_yaml["cluster"]["workerSpot"]))
         
         with open("init_cluster/eks_cluster.yaml", "w") as yamlfile:
             yamlfile.write(eks_cluster_yaml)

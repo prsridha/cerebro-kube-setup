@@ -24,7 +24,7 @@ managedNodeGroups:
   availabilityZones:
   - us-west-1b
   - us-west-1c
-  spot: true
+  spot: {{ workerSpot }}
   ssh:
     allow: true
     publicKeyName: cerebro-kube-kp
