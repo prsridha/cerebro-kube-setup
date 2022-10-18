@@ -489,8 +489,8 @@ class CerebroInstaller:
         print("Created kubernetes secret for git")
 
         home = "/home/ec2-user"
-        self.conn.run("mkdir {}/cerebro-repo".format(home))
-        self.conn.run("mkdir {}/user-repo".format(home))
+        self.conn.run("mkdir -p {}/cerebro-repo".format(home))
+        self.conn.run("mkdir -p {}/user-repo".format(home))
         print("Created directories for cerebro repos")
 
         # add node local DNS cache
