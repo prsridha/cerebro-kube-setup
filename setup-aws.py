@@ -401,7 +401,7 @@ class CerebroInstaller:
         """
         
         out = run(cmd2.format(controller_sg_id, port))
-        out = run(cmd2.format(controller_sg_id, prometheus_port))
+        out = run(cmd2.format(controller_sg_id, prometheus_port), haltException=False)
 
         print("Added Ingress rules in Controller SecurityGroup for Grafana and Prometheus ports")
         
