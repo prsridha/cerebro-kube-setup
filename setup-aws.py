@@ -905,8 +905,65 @@ class CerebroInstaller:
         cmd = "kubectl get pods"
         run(cmd, capture_output=False)
     
+    def downloadStats(self):
+        # initialize Fabric
+        self.initializeFabric()
+        
+        names = getPodNames(self.kube_namespace)
+        controller = names["controller"]
+        workers = names["mop_workers"]
+        
+        cmd1 = "kubectl exec -t {} -c 'cerebro-controller-container' -- mkdir /data/cerebro_metrics_storage/stats".format(controller)
+        run(cmd1)
+        
+        # copy controller logs
+        cmds = [
+            "mkdir -p /data/cerebro_metrics_storage/stats/controller",
+            "cp cerebro/cerebro.log /data/cerebro_metrics_storage/stats/controller/cerebro.log",
+            "mkdir -p /data/cerebro_metrics_storage/stats/controller/metrics",
+            "cp -r /data/cerebro_metrics_storage/metrics/* /data/cerebro_metrics_storage/stats/controller/metrics",
+            "mkdir -p /data/cerebro_metrics_storage/stats/controller/configs",
+            "cp -r /data/cerebro_config_storage/* /data/cerebro_metrics_storage/stats/controller/configs"
+        ]
+        
+        for cmd in cmds:
+            run("kubectl exec -t {} -c 'cerebro-controller-container' -- bash -c '{}' ".format(controller, cmd))
+        
+        # copy worker logs
+        cmds = [
+            "mkdir -p /data/cerebro_metrics_storage/stats/worker{}",
+            "cp cerebro/cerebro.log /data/cerebro_metrics_storage/stats/worker{}/cerebro.log",
+            "cp worker_logs.log /data/cerebro_metrics_storage/stats/worker{}/worker_logs.log",
+            "cp etl_logs.log /data/cerebro_metrics_storage/stats/worker{}/etl_logs.log"
+        ]
+        count = 1
+        for worker in workers:
+            for cmd in cmds:
+                run("kubectl exec -t {} -c 'cerebro-worker-mop-{}-container' -- bash -c '{}' ".format(worker, count, cmd.format(count)))
+            count += 1
+        
+        print("Copied Controller and /data logs")
+        
+        # copy from EFS to controller node
+        cmd1 = "kubectl exec -t {} -c 'cerebro-controller-container' -- bash -c 'mkdir -p stats' ".format(controller)
+        cmd2 = "kubectl exec -t {} -c 'cerebro-controller-container' -- cp -r /data/cerebro_metrics_storage/stats /cerebro-repo/cerebro-kube".format(controller)
+        run(cmd1)
+        run(cmd2)
+        print("Copied stats to controller node")
+        
+        # download from controller node to local
+        run("rm -rf stats")
+        run("mkdir -p stats")
+        
+        cmd = "scp -r -i {} ec2-user@{}:/home/ec2-user/cerebro-repo/cerebro-kube/stats ./stats".format(self.values_yaml["cluster"]["pemPath"], self.controller)
+        run(cmd)
+        print("Downloaded stats to local")
+    
     def testing(self):
-        pass
+        self.initializeFabric()
+        
+        ans = self.conn.run("pwd")
+        print(ans)
 
     # call the below functions from CLI
     def createCluster(self):
@@ -936,16 +993,16 @@ class CerebroInstaller:
         except Exception as e:
             print("Couldn't create the cluster")
             print(str(e))
-        
+
         # add EFS storage
         self.addStorage()
-        
+
         # add Local DNS Cache
         self.addLocalDNSCache()
 
         # install Prometheus and Grafana
         self.installMetricsMonitor()
-        
+
         # initialize basic cerebro components
         self.initCerebro()
 
