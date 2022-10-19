@@ -6,7 +6,7 @@
             "Action": [
                 "s3:ListBucket"
             ],
-            "Resource": "arn:aws:s3:::cerebro-coco-dataset"
+            "Resource": "arn:aws:s3:::cerebro-coco-dataset-us"
         },
         {
             "Sid": "List",
@@ -15,7 +15,7 @@
                 "s3:GetObject",
                 "s3:GetObjectVersion"
             ],
-            "Resource": "arn:aws:s3:::cerebro-coco-dataset/*"
+            "Resource": "arn:aws:s3:::cerebro-coco-dataset-us/*"
         }
     ]
 }
