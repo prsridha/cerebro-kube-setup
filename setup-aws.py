@@ -69,7 +69,10 @@ def getPodNames(namespace):
     v1 = client.CoreV1Api()
     pods_list = v1.list_namespaced_pod(
         namespace, label_selector=label, watch=False)
-    controller = pods_list.items[0].metadata.name
+    if len(pods_list.items) > 0:
+        controller = pods_list.items[0].metadata.name
+    else:
+        controller = ""
 
     label = "type=cerebro-worker-etl"
     pods_list = v1.list_namespaced_pod(
@@ -684,8 +687,8 @@ class CerebroInstaller:
         
         # create Cerebro directories on the worker nodes
         home = "/home/ec2-user"
-        self.s.run("mkdir {}/user-repo".format(home))
-        self.s.run("mkdir {}/cerebro-repo".format(home))
+        self.s.run("mkdir -p {}/user-repo".format(home))
+        self.s.run("mkdir -p {}/cerebro-repo".format(home))
         
         # create ETL Workers
         cmds = [
