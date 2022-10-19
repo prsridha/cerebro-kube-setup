@@ -684,8 +684,8 @@ class CerebroInstaller:
         
         # create Cerebro directories on the worker nodes
         home = "/home/ec2-user"
-        self.s.run("mkdir -p {}/user-repo".format(home))
-        self.s.run("mkdir -p {}/cerebro-repo".format(home))
+        self.s.run("mkdir {}/user-repo".format(home))
+        self.s.run("mkdir {}/cerebro-repo".format(home))
         
         # create ETL Workers
         cmds = [
@@ -960,10 +960,7 @@ class CerebroInstaller:
         print("Downloaded stats to local")
     
     def testing(self):
-        self.initializeFabric()
-        
-        ans = self.conn.run("pwd")
-        print(ans)
+        pass
 
     # call the below functions from CLI
     def createCluster(self):
@@ -1010,6 +1007,8 @@ class CerebroInstaller:
         # create controller
         self.createController()
 
+        time.sleep(3)
+        
         # create workers
         self.createWorkers()
 
