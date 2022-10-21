@@ -467,6 +467,15 @@ class CerebroInstaller:
             v1.patch_node(node_name, patched_node)
             print("Patched Worker node:", node_name, "as node" + str(worker_i))
             worker_i += 1
+            
+        # create Cerebro directories on Controller and Worker nodes
+        home = "/home/ec2-user"
+        self.conn.run("mkdir -p {}/cerebro-repo".format(home))
+        self.conn.run("mkdir -p {}/user-repo".format(home))
+        self.s.run("mkdir -p {}/user-repo".format(home))
+        self.s.run("mkdir -p {}/cerebro-repo".format(home))
+        
+        print("Created directories for cerebro repos")
     
     def initCerebro(self):
         # load fabric connections
@@ -500,11 +509,6 @@ class CerebroInstaller:
         rm_known_hosts = "rm ./reference/known_hosts"
         run(rm_known_hosts)
         print("Created kubernetes secret for git")
-
-        home = "/home/ec2-user"
-        self.conn.run("mkdir -p {}/cerebro-repo".format(home))
-        self.conn.run("mkdir -p {}/user-repo".format(home))
-        print("Created directories for cerebro repos")
 
         # add node local DNS cache
         cmd2 = "kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}"
@@ -694,11 +698,6 @@ class CerebroInstaller:
     def createWorkers(self):
         # load fabric connections
         self.initializeFabric()
-        
-        # create Cerebro directories on the worker nodes
-        home = "/home/ec2-user"
-        self.s.run("mkdir -p {}/user-repo".format(home))
-        self.s.run("mkdir -p {}/cerebro-repo".format(home))
         
         # create ETL Workers
         cmds = [
