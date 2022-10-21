@@ -442,7 +442,7 @@ class CerebroInstaller:
         url = "http://{}:{}".format(public_dns_name, port)
         webbrowser.open(url)
 
-    def initCerebro(self):
+    def patchNodes(self):
         # load fabric connections
         self.initializeFabric()
         
@@ -467,6 +467,16 @@ class CerebroInstaller:
             v1.patch_node(node_name, patched_node)
             print("Patched Worker node:", node_name, "as node" + str(worker_i))
             worker_i += 1
+    
+    def initCerebro(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        
+        # patch nodes with cerebro/nodename label
+        self.patchNodes()
         
         # create namespace, set context and setup kube-config
         cmds1 = [
