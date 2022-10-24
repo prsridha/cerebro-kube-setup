@@ -47,8 +47,9 @@ cluster:
   nodeLocalListenIP: 169.254.0.0
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
+  ratioETLCores: 0.75
   port: 8787
-  schedulerIP: 10.100.157.26
+  schedulerIP: 10.100.222.111
   workerContainerPort: 8787
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
