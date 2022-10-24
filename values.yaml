@@ -37,7 +37,6 @@ cluster:
   controllerInstance: t3.xlarge
   workerInstance: g4dn.4xlarge
   volumeSize: 200
-  percentETLCores: 75
   efsFileSystemIds:
     checkpointFsId: fs-04957597bb9603c68
     dataFsId: fs-07c0f3216a14aeaf1
@@ -49,7 +48,8 @@ cluster:
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
   port: 8787
-  schedulerIP: 10.100.168.25
+  schedulerIP: 10.100.109.225
+  percentETLCores: 75
   workerContainerPort: 8787
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
