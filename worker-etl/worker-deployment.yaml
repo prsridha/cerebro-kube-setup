@@ -76,8 +76,8 @@ spec:
           value: "{{ .Values.workerID }}"
         - name: POD_TYPE
           value: "etl"
-        - name: RATIO_ETL_CORES
-          value: "{{ .Values.workerETL.ratioETLCores }}"
+        - name: PERCENT_ETL_CORES
+          value: "{{ .Values.workerETL.percentETLCores }}"
         - name: DASK_SCHEDULER_IP
           value: "{{ .Values.workerETL.schedulerIP }}"
         volumeMounts:
