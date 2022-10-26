@@ -17,7 +17,7 @@ managedNodeGroups:
 - name: ng-worker
   labels:
     role: worker
-  instanceType: {{ worker.instanceType }}
+  instanceTypes: {{ worker.instanceType }}
   desiredCapacity: {{ desiredCapacity }}
   volumeSize: {{ volumeSize }}
   ami: ami-09e225cf6c5c13915
