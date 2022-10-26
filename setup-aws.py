@@ -617,7 +617,7 @@ class CerebroInstaller:
             self.controller, pem_path, users_port, node_port)
         subprocess.Popen(prt_frwd.split(" "))
         
-        time.sleep(2)
+        time.sleep(5)
         url = "http://localhost:{}/?token={}".format(users_port, jupyter_token)
         webbrowser.open(url)
             
@@ -649,7 +649,7 @@ class CerebroInstaller:
             self.controller, pem_path, users_port, node_port)
         subprocess.Popen(prt_frwd.split(" "))
         
-        time.sleep(2)
+        time.sleep(5)
         url = "http://localhost:{}".format(users_port)
         webbrowser.open(url)
         
