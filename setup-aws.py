@@ -347,8 +347,13 @@ class CerebroInstaller:
         --values {}
         """.format(prom_path)
         
+        cmd2 = "helm repo add grafana https://grafana.github.io/helm-charts"
+        cmd3 = "helm upgrade --install loki grafana/loki-stack -n prom-metrics"
+        
         print("Installing Prometheus and Grafana...")
         run(cmd1, capture_output=False)
+        run(cmd2, capture_output=False)
+        run(cmd3, capture_output=False)
         
         # install DCGM exporter
         dcgm_path = "init_cluster/metrics_monitor/dcgm"

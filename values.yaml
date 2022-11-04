@@ -1,12 +1,12 @@
 controller:
   volumes:
-    configCapacity: 500Mi
+    configCapacity: 1Gi
     configMountPath: /data/cerebro_config_storage
     checkpointCapacity: 20Gi
     checkpointMountPath: /data/cerebro_checkpoint_storage
     metricsCapacity: 5Gi
     metricsMountPath: /data/cerebro_metrics_storage
-    dataCapacity: 50Gi
+    dataCapacity: 70Gi
     dataMountPath: /data/cerebro_data_storage
     cerebroRepoHostPath: /home/ec2-user/cerebro-repo
     cerebroRepoMountPath: /cerebro-repo
@@ -42,17 +42,17 @@ cluster:
   - g5.8xlarge
   volumeSize: 200
   efsFileSystemIds:
-    checkpointFsId: fs-0926314879c53de16
-    dataFsId: fs-0354a1053bc31397e
-    metricsFsId: fs-006a3d20bda414583
-    configFsId: fs-00c89851b1027c58d
+    checkpointFsId: fs-0ab6db93a9a22515d
+    dataFsId: fs-038ed12ed0a514361
+    metricsFsId: fs-0de747d3f8570416c
+    configFsId: fs-08ab1eb68fc0f3261
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   nodeLocalListenIP: 169.254.0.0
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
   port: 8787
-  schedulerIP: 10.100.157.124
+  schedulerIP: 10.100.55.38
   percentETLCores: 100
   workerContainerPort: 8787
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
