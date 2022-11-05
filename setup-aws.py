@@ -770,7 +770,7 @@ class CerebroInstaller:
             f.write(
                 "Model Hopper Worker IPs:\n")
             f.write("\n".join(ips))
-            f.write("\n\n" + str(ips))
+            f.write("\n\n" + json.dumps(ips))
         
         print("Created the workers")
 
