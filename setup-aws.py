@@ -425,6 +425,7 @@ class CerebroInstaller:
         print(
             "Access Grafana with this link:\nhttp://{}:{}".format(public_dns_name, port))
         print("username: {}\npassword: {}".format("admin", "prom-operator"))
+        print("Add Loki Datasource with this url: \nhttp://loki:3100")
         
         print(
             "Access Prometheus with this link:\nhttp://{}:{}".format(public_dns_name, prometheus_port))
@@ -436,6 +437,8 @@ class CerebroInstaller:
                 "Access Grafana with this link:\nhttp://{}:{}\n".format(public_dns_name, port))
             f.write("username: {}\npassword: {}\n".format(
                 "admin", "prom-operator"))
+            f.write(
+                "Add Loki Datasource with this url:\nhttp://loki:3100\n")
             f.write(
                 "\nAccess Prometheus with this link:\nhttp://{}:{}\n".format(public_dns_name, prometheus_port))
 
