@@ -8,6 +8,7 @@ import subprocess
 from git import Repo
 import oyaml as yaml
 from pathlib import Path
+from pprint import pprint
 from kubernetes import client, config
 from fabric2 import ThreadingGroup, Connection
 
@@ -535,6 +536,39 @@ class CerebroInstaller:
         
         cmd3 = "kubectl apply -f init_cluster/nodelocaldns.yaml"
         run(cmd3, capture_output=False)
+        
+        # add hardware info configmap
+        # get number of cores
+        cores = []
+        out = self.s.run("grep -c ^processor /proc/cpuinfo", hide=True)
+        for _, ans in out.items():
+            cores.append(int(ans.stdout.strip()))
+        
+        # get number of GPUs
+        gpus = []
+        out = self.s.run("nvidia-smi --query-gpu=name --format=csv,noheader | wc -l", hide=True)
+        for _, ans in out.items():
+            gpus.append(int(ans.stdout.strip()))
+        
+        node_hardware_info = {}
+        
+        for i in range(1, self.num_workers+1):
+            node_hardware_info["node" + str(i)] = {
+                "num_cores": cores[i-1],
+                "num_gpus": gpus[i-1]
+            }
+        
+        path = "init_cluster/node_hardware_info.json"
+        with open(path, "w") as f:
+            json.dump(node_hardware_info, f)
+            
+        # create configmap
+        cmd = "kubectl create -n {} configmap node-hardware-info --from-file=init_cluster/node_hardware_info.json".format(self.kube_namespace)
+        run(cmd)
+        
+        run("rm {}".format(path))
+        
+        print("Created configmap for node hardware info")
     
     def addDaskMeta(self):
         # write scheduler IP to yaml file
@@ -980,7 +1014,37 @@ class CerebroInstaller:
         print("Downloaded stats to local")
     
     def testing(self):
-        pass
+        self.initializeFabric()
+        
+        # get number of cores
+        cores = []
+        out = self.s.run("grep -c ^processor /proc/cpuinfo", hide=True)
+        for _, ans in out.items():
+            cores.append(int(ans.stdout.strip()))
+        
+        # get number of GPUs
+        gpus = []
+        out = self.s.run("nvidia-smi --query-gpu=name --format=csv,noheader | wc -l", hide=True)
+        for _, ans in out.items():
+            gpus.append(int(ans.stdout.strip()))
+        
+        node_hardware_info = {}
+        
+        for i in range(1, self.num_workers+1):
+            node_hardware_info["node" + str(i)] = {
+                "num_cores": cores[i-1],
+                "num_gpus": gpus[i-1]
+            }
+        
+        path = "init_cluster/node_hardware_info.json"
+        with open(path, "w") as f:
+            json.dump(node_hardware_info, f)
+            
+        # create configmap
+        cmd = "kubectl create -n {} configmap node-hardware-info --from-file=init_cluster/node_hardware_info.json".format(self.kube_namespace)
+        run(cmd)
+        
+        run("rm {}".format(path))
 
     # call the below functions from CLI
     def createCluster(self):
