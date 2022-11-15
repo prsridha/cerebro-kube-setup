@@ -32,8 +32,6 @@ spec:
         - name: git-secret
           mountPath: /etc/git-secret
         env:
-        - name: NODE_ID
-          value: {{ .Values.workerID }}
         - name: GIT_SYNC_REPO
           value: {{ .Values.controller.git.cerebroRepoURL }}
         - name: GIT_SYNC_BRANCH
