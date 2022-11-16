@@ -919,7 +919,7 @@ class CerebroInstaller:
             print("Deleted CloudFormation Stack")
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
     
-    def cleanUp(self):
+    def restart(self):
         pod_names = getPodNames(self.kube_namespace)
         n_workers = self.values_yaml["cluster"]["workers"]
         self.initializeFabric()
@@ -1037,7 +1037,7 @@ class CerebroInstaller:
         self.initializeFabric()
         
         # run git pull on controller
-        cmd = "kubectl exec -it {} -- bash -c 'git pull'".format(pod_names["controller"])
+        cmd = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git pull'".format(pod_names["controller"])
         run(cmd)
         
         cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
@@ -1077,7 +1077,7 @@ class CerebroInstaller:
         self.initializeFabric()
         
         # run git pull on controller
-        cmd = "kubectl exec -it {} -- bash -c 'git pull'".format(pod_names["controller"])
+        cmd = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git pull'".format(pod_names["controller"])
         run(cmd)
         
         cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
