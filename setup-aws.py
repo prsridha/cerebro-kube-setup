@@ -1036,6 +1036,10 @@ class CerebroInstaller:
         n_workers = self.values_yaml["cluster"]["workers"]
         self.initializeFabric()
         
+        # run git pull on controller
+        cmd = "kubectl exec -it {} -- bash -c 'git pull'".format(pod_names["controller"])
+        run(cmd)
+        
         cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
         for pod in pod_names["mop_workers"]:
             run(cmd1.format(pod), haltException=False)
@@ -1064,7 +1068,6 @@ class CerebroInstaller:
         
         # re-create ETL workers
         self.createWorkers(create_etl=True, create_mop=False)
-        print("Created ETL workers")
         
     def restartMOP(self):
         config.load_kube_config()
@@ -1072,6 +1075,10 @@ class CerebroInstaller:
         pod_names = getPodNames(self.kube_namespace)
         n_workers = self.values_yaml["cluster"]["workers"]
         self.initializeFabric()
+        
+        # run git pull on controller
+        cmd = "kubectl exec -it {} -- bash -c 'git pull'".format(pod_names["controller"])
+        run(cmd)
         
         cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
         cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
@@ -1098,7 +1105,6 @@ class CerebroInstaller:
         
         # re-create ETL workers
         self.createWorkers(create_etl=False, create_mop=True)
-        print("Created MOP workers")
         
     def testing(self):
         pass

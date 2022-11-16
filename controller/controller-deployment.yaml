@@ -78,11 +78,15 @@ spec:
         env:
         - name: POD_TYPE
           value: "controller"
+        - name: GIT_SYNC_SERVER
+          value: {{ .Values.creds.gitServer }}
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
+        - name: git-secret
+          mountPath: /etc/git-secret
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
         - name: user-repo
