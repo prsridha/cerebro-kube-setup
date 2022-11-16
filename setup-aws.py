@@ -1037,8 +1037,10 @@ class CerebroInstaller:
         self.initializeFabric()
         
         # run git pull on controller
-        cmd = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git reset --hard'".format(pod_names["controller"])
-        run(cmd)
+        cmd1 = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git reset --hard'".format(pod_names["controller"])
+        cmd2 = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git pull'".format(pod_names["controller"])
+        run(cmd1)
+        run(cmd2)
         
         cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
         for pod in pod_names["mop_workers"]:
@@ -1077,8 +1079,10 @@ class CerebroInstaller:
         self.initializeFabric()
         
         # run git pull on controller
-        cmd = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git reset --hard'".format(pod_names["controller"])
-        run(cmd)
+        cmd1 = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git reset --hard'".format(pod_names["controller"])
+        cmd2 = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git pull'".format(pod_names["controller"])
+        run(cmd1)
+        run(cmd2)
         
         cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
         cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
