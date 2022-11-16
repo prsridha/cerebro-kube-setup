@@ -923,15 +923,21 @@ class CerebroInstaller:
         pod_names = getPodNames(self.kube_namespace)
         n_workers = self.values_yaml["cluster"]["workers"]
         self.initializeFabric()
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
         
         # clean up Workers
         cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
         for pod in pod_names["mop_workers"]:
             run(cmd1.format(pod), haltException=False)
         helm_etl = ["worker-etl-" + str(i) for i in range(1, n_workers + 1)]
-        helm_mop = ["worker-mop-" + str(i) for i in range(1, n_workers + 1)]
-        cmd2 = "helm delete " + " ".join(helm_etl) + " " + " ".join(helm_mop)
+        cmd2 = "helm delete " + " ".join(helm_etl)
         run(cmd2, capture_output=False, haltException=False)
+        
+        helm_mop = ["worker-mop-" + str(i) for i in range(1, n_workers + 1)]
+        cmd2 = "helm delete " + " ".join(helm_mop)
+        run(cmd2, capture_output=False, haltException=False)
+        
         print("Cleaned up workers")
         
         # clean up Controller
@@ -961,8 +967,7 @@ class CerebroInstaller:
         cmd = "kubectl get pods"
         run(cmd, capture_output=False)
         
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
+        pods_list = v1.list_namespaced_pod(self.kube_namespace)
         while pods_list.items != []:
             time.sleep(1)
             print("Waiting for pods to shutdown...")
@@ -1044,7 +1049,6 @@ class CerebroInstaller:
         cmd11 = "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
         try:
             for i in [cmd8, cmd9, cmd10, cmd11]:
-                self.conn.run(i)
                 self.s.run(i)
         except Exception as e:
             print("Got error: " + str(e))
@@ -1075,7 +1079,6 @@ class CerebroInstaller:
         cmd11 = "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
         try:
             for i in [cmd8, cmd9, cmd10, cmd11]:
-                self.conn.run(i)
                 self.s.run(i)
         except Exception as e:
             print("Got error: " + str(e))
