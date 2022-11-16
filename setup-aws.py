@@ -1090,7 +1090,7 @@ class CerebroInstaller:
         
         pods_list = v1.list_namespaced_pod(self.kube_namespace)
         # wait for ETL workers to shutdown
-        while "worker-etl" in str(pods_list.items):
+        while "worker-mop" in str(pods_list.items):
             time.sleep(1)
             pods_list = v1.list_namespaced_pod(self.kube_namespace)
         
