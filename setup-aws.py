@@ -737,74 +737,76 @@ class CerebroInstaller:
 
         print("Done")
 
-    def createWorkers(self):
+    def createWorkers(self, create_etl=True, create_mop=True):
         # load fabric connections
         self.initializeFabric()
         
         # create ETL Workers
-        cmds = [
-            "mkdir -p charts",
-            "helm create charts/cerebro-worker-etl",
-            "rm -rf charts/cerebro-worker-etl/templates/*",
-            "cp worker-etl/* charts/cerebro-worker-etl/templates/",
-            "cp values.yaml charts/cerebro-worker-etl/values.yaml"
-        ]
-        c = "helm install --namespace={n} worker-etl-{id} charts/cerebro-worker-etl --set workerID={id}"
-        
-        for i in range(1, self.num_workers + 1):
-            cmds.append(
-                c.format(id=i, n=self.kube_namespace))
-        
-        for cmd in cmds:
-            time.sleep(0.5)
-            run(cmd, capture_output=False)
-        run("rm -rf charts")
-        
-        print("Waiting for ETL Worker start-up")
-        label = "type=cerebro-worker-etl"
-        while not checkPodStatus(label, self.kube_namespace):
-            time.sleep(1)
-        
-        print("ETL-Workers created successfully")
+        if create_etl:
+            cmds = [
+                "mkdir -p charts",
+                "helm create charts/cerebro-worker-etl",
+                "rm -rf charts/cerebro-worker-etl/templates/*",
+                "cp worker-etl/* charts/cerebro-worker-etl/templates/",
+                "cp values.yaml charts/cerebro-worker-etl/values.yaml"
+            ]
+            c = "helm install --namespace={n} worker-etl-{id} charts/cerebro-worker-etl --set workerID={id}"
+            
+            for i in range(1, self.num_workers + 1):
+                cmds.append(
+                    c.format(id=i, n=self.kube_namespace))
+            
+            for cmd in cmds:
+                time.sleep(0.5)
+                run(cmd, capture_output=False)
+            run("rm -rf charts")
+            
+            print("Waiting for ETL Worker start-up")
+            label = "type=cerebro-worker-etl"
+            while not checkPodStatus(label, self.kube_namespace):
+                time.sleep(1)
+            
+            print("ETL-Workers created successfully")
         
         # Create MOP Workers
-        cmds = [
-            "mkdir -p charts",
-            "helm create charts/cerebro-worker-mop",
-            "rm -rf charts/cerebro-worker-mop/templates/*",
-            "cp worker-mop/* charts/cerebro-worker-mop/templates/",
-            "cp values.yaml charts/cerebro-worker-mop/values.yaml",
-        ]
-        c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id}"
-        
-        for i in range(1, self.num_workers + 1):
-            cmds.append(
-                c.format(id=i, n=self.kube_namespace))
-        
-        for cmd in cmds:
-            time.sleep(0.5)
-            run(cmd, capture_output=False)
-        run("rm -rf charts")
-        
-        print("Waiting for MOP Worker start-up")
-        label = "type=cerebro-worker-mop"
-        while not checkPodStatus(label, self.kube_namespace):
-            time.sleep(1)
-        
-        # write worker_ips to references
-        cmd = "kubectl get service -o json -l {}".format(label)
-        output = json.loads(run(cmd))
-        ips = []
-        for pod in output["items"]:
-            ip = "http://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
-            ips.append(ip)
+        if create_mop:
+            cmds = [
+                "mkdir -p charts",
+                "helm create charts/cerebro-worker-mop",
+                "rm -rf charts/cerebro-worker-mop/templates/*",
+                "cp worker-mop/* charts/cerebro-worker-mop/templates/",
+                "cp values.yaml charts/cerebro-worker-mop/values.yaml",
+            ]
+            c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id}"
+            
+            for i in range(1, self.num_workers + 1):
+                cmds.append(
+                    c.format(id=i, n=self.kube_namespace))
+            
+            for cmd in cmds:
+                time.sleep(0.5)
+                run(cmd, capture_output=False)
+            run("rm -rf charts")
+            
+            print("Waiting for MOP Worker start-up")
+            label = "type=cerebro-worker-mop"
+            while not checkPodStatus(label, self.kube_namespace):
+                time.sleep(1)
+            
+            # write worker_ips to references
+            cmd = "kubectl get service -o json -l {}".format(label)
+            output = json.loads(run(cmd))
+            ips = []
+            for pod in output["items"]:
+                ip = "http://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
+                ips.append(ip)
 
-        Path("reference").mkdir(parents=True, exist_ok=True)
-        with open("reference/ml_worker_ips.txt", "w+") as f:
-            f.write(
-                "Model Hopper Worker IPs:\n")
-            f.write("\n".join(ips))
-            f.write("\n\n" + json.dumps(ips))
+            Path("reference").mkdir(parents=True, exist_ok=True)
+            with open("reference/ml_worker_ips.txt", "w+") as f:
+                f.write(
+                    "Model Hopper Worker IPs:\n")
+                f.write("\n".join(ips))
+                f.write("\n\n" + json.dumps(ips))
         
         print("Created the workers")
 
@@ -958,6 +960,15 @@ class CerebroInstaller:
         print("\nkubectl get pods:")
         cmd = "kubectl get pods"
         run(cmd, capture_output=False)
+        
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        while pods_list.items != []:
+            time.sleep(1)
+            print("Waiting for pods to shutdown...")
+            pods_list = v1.list_namespaced_pod(self.kube_namespace)
+
+        print("Done")
     
     def downloadStats(self):
         # initialize Fabric
@@ -1013,38 +1024,81 @@ class CerebroInstaller:
         run(cmd)
         print("Downloaded stats to local")
     
-    def testing(self):
+    def restartETL(self):
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        pod_names = getPodNames(self.kube_namespace)
+        n_workers = self.values_yaml["cluster"]["workers"]
         self.initializeFabric()
         
-        # get number of cores
-        cores = []
-        out = self.s.run("grep -c ^processor /proc/cpuinfo", hide=True)
-        for _, ans in out.items():
-            cores.append(int(ans.stdout.strip()))
+        cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
+        for pod in pod_names["mop_workers"]:
+            run(cmd1.format(pod), haltException=False)
+        helm_etl = ["worker-etl-" + str(i) for i in range(1, n_workers + 1)]
+        cmd2 = "helm delete " + " ".join(helm_etl)
+        run(cmd2, capture_output=False, haltException=False)
         
-        # get number of GPUs
-        gpus = []
-        out = self.s.run("nvidia-smi --query-gpu=name --format=csv,noheader | wc -l", hide=True)
-        for _, ans in out.items():
-            gpus.append(int(ans.stdout.strip()))
+        cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
+        cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
+        cmd10 = "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0"
+        cmd11 = "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
+        try:
+            for i in [cmd8, cmd9, cmd10, cmd11]:
+                self.conn.run(i)
+                self.s.run(i)
+        except Exception as e:
+            print("Got error: " + str(e))
+        print("Deleted cerebro-repo and user-repo")
         
-        node_hardware_info = {}
+        pods_list = v1.list_namespaced_pod(self.kube_namespace)
+        # wait for ETL workers to shutdown
+        while "worker-etl" in str(pods_list.items):
+            time.sleep(1)
+            pods_list = v1.list_namespaced_pod(self.kube_namespace)
         
-        for i in range(1, self.num_workers+1):
-            node_hardware_info["node" + str(i)] = {
-                "num_cores": cores[i-1],
-                "num_gpus": gpus[i-1]
-            }
+        print("Cleaned up ETL workers")
         
-        path = "init_cluster/node_hardware_info.json"
-        with open(path, "w") as f:
-            json.dump(node_hardware_info, f)
-            
-        # create configmap
-        cmd = "kubectl create -n {} configmap node-hardware-info --from-file=init_cluster/node_hardware_info.json".format(self.kube_namespace)
-        run(cmd)
+        # re-create ETL workers
+        self.createWorkers(create_etl=True, create_mop=False)
+        print("Created ETL workers")
         
-        run("rm {}".format(path))
+    def restartMOP(self):
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        pod_names = getPodNames(self.kube_namespace)
+        n_workers = self.values_yaml["cluster"]["workers"]
+        self.initializeFabric()
+        
+        cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
+        cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
+        cmd10 = "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0"
+        cmd11 = "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
+        try:
+            for i in [cmd8, cmd9, cmd10, cmd11]:
+                self.conn.run(i)
+                self.s.run(i)
+        except Exception as e:
+            print("Got error: " + str(e))
+        print("Deleted cerebro-repo and user-repo")
+        
+        helm_mop = ["worker-mop-" + str(i) for i in range(1, n_workers + 1)]
+        cmd2 = "helm delete " + " ".join(helm_mop)
+        run(cmd2, capture_output=False, haltException=False)
+        
+        pods_list = v1.list_namespaced_pod(self.kube_namespace)
+        # wait for ETL workers to shutdown
+        while "worker-etl" in str(pods_list.items):
+            time.sleep(1)
+            pods_list = v1.list_namespaced_pod(self.kube_namespace)
+        
+        print("Cleaned up MOP workers")
+        
+        # re-create ETL workers
+        self.createWorkers(create_etl=False, create_mop=True)
+        print("Created MOP workers")
+        
+    def testing(self):
+        pass
 
     # call the below functions from CLI
     def createCluster(self):
