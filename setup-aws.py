@@ -919,7 +919,7 @@ class CerebroInstaller:
             print("Deleted CloudFormation Stack")
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
     
-    def restart(self):
+    def cleanUp(self):
         pod_names = getPodNames(self.kube_namespace)
         n_workers = self.values_yaml["cluster"]["workers"]
         self.initializeFabric()
