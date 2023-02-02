@@ -71,6 +71,10 @@ spec:
         imagePullPolicy: Always
         command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
         workingDir: /cerebro-repo/cerebro-kube
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh","-c","ray stop"]
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"
@@ -80,6 +84,8 @@ spec:
           value: "{{ .Values.workerETL.percentETLCores }}"
         - name: RAY_HEAD_IP
           value: "{{ .Values.workerETL.rayHeadIP }}"
+        - name: RAY_PORT
+          value: {{ .Values.workerETL.port }}
         volumeMounts:
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
@@ -92,7 +98,7 @@ spec:
         - name: cerebro-controller-storage
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
         ports:
-        - containerPort: {{ .Values.workerETL.workerContainerPort }}
+        - containerPort: {{ .Values.workerETL.port }}
       volumes:
       - name: user-repo
         hostPath:
