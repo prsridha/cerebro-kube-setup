@@ -10,8 +10,8 @@ spec:
   selector:
     app: cerebro-worker-etl-{{ .Values.workerID }}
   ports:
-  - name: "dask-port"
+  - name: "ray-port"
     protocol: "TCP"
     port: {{ .Values.workerETL.port }}
-    targetPort: {{ .Values.workerETL.workerContainerPort }}
+    targetPort: {{ .Values.workerETL.port }}
   type: ClusterIP

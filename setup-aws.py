@@ -570,7 +570,7 @@ class CerebroInstaller:
         
         print("Created configmap for node hardware info")
     
-    def addDaskMeta(self):
+    def addRayMeta(self):
         # write scheduler IP to yaml file
         config.load_kube_config()
         v1 = client.CoreV1Api()
@@ -579,34 +579,34 @@ class CerebroInstaller:
             namespace=self.kube_namespace, name=svc_name)
         controller_ip = svc.spec.cluster_ip
 
-        self.values_yaml["workerETL"]["schedulerIP"] = controller_ip
+        self.values_yaml["workerETL"]["rayHeadIP"] = controller_ip
         
         with open('values.yaml', 'w') as yamlfile:
             yaml.safe_dump(self.values_yaml, yamlfile)
 
         print("cerebro-controller's IP: ", controller_ip)
         
-        # add Dask Dashboard info to references
+        # add Ray Dashboard info to references
         namespace = self.kube_namespace
-        label = "serviceApp=dask"
+        label = "serviceApp=ray"
         config.load_kube_config()
         v1 = client.CoreV1Api()
-        jupyter_svc = v1.list_namespaced_service(
+        ray_svc = v1.list_namespaced_service(
             namespace, label_selector=label, watch=False)
-        jupyter_svc = jupyter_svc.items[0]
-        node_port = jupyter_svc.spec.ports[0].node_port
+        ray_svc = ray_svc.items[0]
+        node_port = ray_svc.spec.ports[0].node_port
         
-        daskDashboardPort = self.values_yaml["controller"]["services"]["daskDashboardPort"]
+        rayDashboardPort = self.values_yaml["controller"]["services"]["rayDashboardPort"]
 
         pem_path = self.values_yaml["cluster"]["pemPath"]
         user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
-            self.controller, pem_path, daskDashboardPort, node_port)
-        s = "\nRun this command on your local machine to access the Dask Dashboard : \n{}\n".format(
-            user_pf_command) + "\n" + "http://localhost:{}".format(daskDashboardPort)
+            self.controller, pem_path, rayDashboardPort, node_port)
+        s = "\nRun this command on your local machine to access the Ray Dashboard : \n{}\n".format(
+            user_pf_command) + "\n" + "http://localhost:{}".format(rayDashboardPort)
         
         print(s)
         Path("reference").mkdir(parents=True, exist_ok=True)
-        with open("reference/dask_dashboard_command.txt", "w+") as f:
+        with open("reference/ray_dashboard_command.txt", "w+") as f:
             f.write(s)
     
     def addJupyterMeta(self):
@@ -695,7 +695,7 @@ class CerebroInstaller:
         url = "http://localhost:{}".format(users_port)
         webbrowser.open(url)
         
-        print("Added JupyterNotebook and")
+        print("Added JupyterNotebook")
     
     def createController(self):
         # load fabric connections
@@ -730,8 +730,8 @@ class CerebroInstaller:
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
 
-        self.addDaskMeta()
-        print("Initialized dask")
+        self.addRayMeta()
+        print("Initialized Ray")
         self.addJupyterMeta()
         print("Initialized JupyterNotebook")
 

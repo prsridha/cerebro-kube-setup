@@ -21,8 +21,8 @@ controller:
     gitSyncImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/git-sync:latest
     image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   services:
-    daskDashboardPort: 8787
-    daskPort: 8786
+    rayDashboardPort: 8265
+    rayPort: 6379
     tensorboardPort: 6006
     jupyterPort: 8888
     jupyterUserPort: 9999
@@ -37,22 +37,21 @@ cluster:
   region: ca-central-1
   controllerInstance: t3.2xlarge
   workerInstance:
-  - g4dn.12xlarge
+  - g4dn.xlarge
   volumeSize: 200
   efsFileSystemIds:
-    checkpointFsId: fs-0c512dab1ef7703d2
-    dataFsId: fs-09e46a595ffadc290
-    metricsFsId: fs-071fe9628d1893a62
-    configFsId: fs-016d798adcb391cc2
+    checkpointFsId: fs-0ff14efe41ae88268
+    dataFsId: fs-0bb0a195125a338c8
+    metricsFsId: fs-01a2d63d5f2ae5e2a
+    configFsId: fs-054e948c9f3d1f267
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   nodeLocalListenIP: 169.254.0.0
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
-  port: 8787
-  schedulerIP: 10.100.195.196
-  percentETLCores: 50
-  workerContainerPort: 8787
+  port: 6379
+  rayHeadIP: 10.100.33.52
+  percentETLCores: 100
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
 workerMOP:

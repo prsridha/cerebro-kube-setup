@@ -78,8 +78,8 @@ spec:
           value: "etl"
         - name: PERCENT_ETL_CORES
           value: "{{ .Values.workerETL.percentETLCores }}"
-        - name: DASK_SCHEDULER_IP
-          value: "{{ .Values.workerETL.schedulerIP }}"
+        - name: RAY_HEAD_IP
+          value: "{{ .Values.workerETL.rayHeadIP }}"
         volumeMounts:
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}

@@ -103,8 +103,8 @@ spec:
           mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
           readOnly: true
         ports:
-        - containerPort: {{ .Values.controller.services.daskPort }}
-          name: dask-port
+        - containerPort: {{ .Values.controller.services.rayPort }}
+          name: ray-port
         - containerPort: {{ .Values.controller.services.jupyterPort }}
           name: jupyter-port
         - containerPort: {{ .Values.controller.services.tensorboardPort }}

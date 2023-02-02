@@ -6,14 +6,14 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
-    serviceApp: dask
+    serviceApp: ray
 spec:
   selector:
     app: cerebro-controller
   ports:
   - protocol: "TCP"
-    port: {{ .Values.controller.services.daskPort }}
-    targetPort: {{ .Values.controller.services.daskPort }}
+    port: {{ .Values.controller.services.rayPort }}
+    targetPort: {{ .Values.controller.services.rayPort }}
   type: NodePort
 ---
 apiVersion: v1
@@ -51,15 +51,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-port-forward-dask
+  name: cerebro-controller-port-forward-ray
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
-    serviceApp: dask
+    serviceApp: ray
 spec:
   selector:
     app: cerebro-controller
   ports:
-    - port: {{ .Values.controller.services.daskDashboardPort }}
-      targetPort: {{ .Values.controller.services.daskDashboardPort }}
+    - port: {{ .Values.controller.services.rayDashboardPort }}
+      targetPort: {{ .Values.controller.services.rayDashboardPort }}
   type: NodePort
