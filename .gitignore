@@ -128,3 +128,8 @@ dmypy.json
 .pyre/
 
 .DS_Store
+
+/reference
+init_cluster/eks_cluster.yaml
+init_cluster/nodelocaldns.yaml
+/stats

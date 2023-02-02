@@ -14,4 +14,4 @@ spec:
     protocol: "TCP"
     port: {{ .Values.workerETL.port }}
     targetPort: {{ .Values.workerETL.workerContainerPort }}
-  type: LoadBalancer
+  type: ClusterIP

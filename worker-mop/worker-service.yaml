@@ -14,4 +14,4 @@ spec:
     protocol: "TCP"
     port: {{ .Values.workerMOP.rcpport }}
     targetPort: {{ .Values.workerMOP.rcpport }}
-  type: LoadBalancer
+  type: ClusterIP
