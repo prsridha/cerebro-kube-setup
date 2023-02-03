@@ -15,9 +15,9 @@ controller:
     userRepoMountPath: /user-repo
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
-    cerebroRepoBranch: feature/multi-gpu-mop
+    cerebroRepoBranch: feature/ray-migration
     userRepoURL: git@github.com:prsridha/coco-mop.git
-    userRepoBranch: feature/multi-gpu-mop
+    userRepoBranch: feature/ray-migration
     gitSyncImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/git-sync:latest
     image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   services:
@@ -40,17 +40,17 @@ cluster:
   - g4dn.xlarge
   volumeSize: 200
   efsFileSystemIds:
-    checkpointFsId: fs-0ff14efe41ae88268
-    dataFsId: fs-0bb0a195125a338c8
-    metricsFsId: fs-01a2d63d5f2ae5e2a
-    configFsId: fs-054e948c9f3d1f267
+    checkpointFsId: fs-06d8e3aaa744ea5b3
+    dataFsId: fs-078eb52adaa7799cc
+    metricsFsId: fs-08dbc5dbebe985fa1
+    configFsId: fs-02ecdc7321e088c83
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   nodeLocalListenIP: 169.254.0.0
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
   port: 6379
-  rayHeadIP: 10.100.33.52
+  rayHeadIP: 10.100.172.169
   percentETLCores: 100
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
