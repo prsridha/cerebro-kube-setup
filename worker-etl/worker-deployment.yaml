@@ -97,6 +97,8 @@ spec:
           mountPath: {{ .Values.controller.volumes.checkpointMountPath }}
         - name: cerebro-controller-storage
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
+        - name: git-secret
+          mountPath: /etc/git-secret
         ports:
         - containerPort: {{ .Values.workerETL.port }}
       volumes:
