@@ -87,7 +87,7 @@ spec:
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
         - name: RAY_PORT
-          value: {{ .Values.controller.services.rayPort }}
+          value: "{{ .Values.controller.services.rayPort }}"
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube

@@ -85,7 +85,7 @@ spec:
         - name: RAY_HEAD_IP
           value: "{{ .Values.workerETL.rayHeadIP }}"
         - name: RAY_PORT
-          value: {{ .Values.workerETL.port }}
+          value: "{{ .Values.workerETL.port }}"
         volumeMounts:
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
