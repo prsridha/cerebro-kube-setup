@@ -80,8 +80,8 @@ spec:
           value: "{{ .Values.workerID }}"
         - name: POD_TYPE
           value: "etl"
-        - name: PERCENT_ETL_CORES
-          value: "{{ .Values.workerETL.percentETLCores }}"
+        - name: RAY_COUNT
+          value: "{{ .Values.workerETL.rayCount }}"
         - name: RAY_HEAD_IP
           value: "{{ .Values.workerETL.rayHeadIP }}"
         - name: RAY_PORT
