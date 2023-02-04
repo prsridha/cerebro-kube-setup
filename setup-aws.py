@@ -342,11 +342,13 @@ class CerebroInstaller:
             out = run(cmd)
             print(out)
         
-        cmd1 = """
-        helm install prom prometheus-community/kube-prometheus-stack \
-        --namespace prom-metrics \
-        --values {}
-        """.format(prom_path)
+        cmd1 = "helm install prom prometheus-community/kube-prometheus-stack --namespace prom-metrics"
+        
+        # cmd1 = """
+        # helm install prom prometheus-community/kube-prometheus-stack \
+        # --namespace prom-metrics \
+        # --values {}
+        # """.format(prom_path)
         
         cmd2 = "helm repo add grafana https://grafana.github.io/helm-charts"
         cmd3 = "helm upgrade --install loki grafana/loki-stack -n prom-metrics"
