@@ -12,6 +12,6 @@ spec:
   ports:
   - name: "ray-port"
     protocol: "TCP"
-    port: {{ .Values.workerETL.port }}
-    targetPort: {{ .Values.workerETL.port }}
+    port: {{ .Values.workerETL.etlPort }}
+    targetPort: {{ .Values.workerETL.etlPort }}
   type: ClusterIP

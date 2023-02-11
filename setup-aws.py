@@ -572,45 +572,6 @@ class CerebroInstaller:
         
         print("Created configmap for node hardware info")
     
-    def addRayMeta(self):
-        # write scheduler IP to yaml file
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        svc_name = "cerebro-controller-service"
-        svc = v1.read_namespaced_service(
-            namespace=self.kube_namespace, name=svc_name)
-        controller_ip = svc.spec.cluster_ip
-
-        self.values_yaml["workerETL"]["rayHeadIP"] = controller_ip
-        
-        with open('values.yaml', 'w') as yamlfile:
-            yaml.safe_dump(self.values_yaml, yamlfile)
-
-        print("cerebro-controller's IP: ", controller_ip)
-        
-        # add Ray Dashboard info to references
-        namespace = self.kube_namespace
-        label = "serviceApp=ray"
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        ray_svc = v1.list_namespaced_service(
-            namespace, label_selector=label, watch=False)
-        ray_svc = ray_svc.items[0]
-        node_port = ray_svc.spec.ports[0].node_port
-        
-        rayDashboardPort = self.values_yaml["controller"]["services"]["rayDashboardPort"]
-
-        pem_path = self.values_yaml["cluster"]["pemPath"]
-        user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
-            self.controller, pem_path, rayDashboardPort, node_port)
-        s = "\nRun this command on your local machine to access the Ray Dashboard : \n{}\n".format(
-            user_pf_command) + "\n" + "http://localhost:{}".format(rayDashboardPort)
-        
-        print(s)
-        Path("reference").mkdir(parents=True, exist_ok=True)
-        with open("reference/ray_dashboard_command.txt", "w+") as f:
-            f.write(s)
-    
     def addJupyterMeta(self):
         users_port = self.values_yaml["controller"]["services"]["jupyterUserPort"]
 
@@ -731,9 +692,6 @@ class CerebroInstaller:
         self.conn.sudo(cmd1)
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
-
-        self.addRayMeta()
-        print("Initialized Ray")
         self.addJupyterMeta()
         print("Initialized JupyterNotebook")
 
