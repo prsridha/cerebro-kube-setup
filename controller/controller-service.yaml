@@ -1,21 +1,4 @@
-# Controller Service 
-apiVersion: v1
-kind: Service
-metadata:
-  name: cerebro-controller-service-etl
-  namespace: {{ .Release.Namespace }}
-  labels:
-    type: cerebro-controller-svc
-    serviceApp: etl
-spec:
-  selector:
-    app: cerebro-controller
-  ports:
-  - protocol: "TCP"
-    port: {{ .Values.controller.services.etlPort }}
-    targetPort: {{ .Values.controller.services.etlPort }}
-  type: NodePort
----
+# Controller Service
 apiVersion: v1
 kind: Service
 metadata:
