@@ -83,7 +83,7 @@ spec:
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
         - name: ETL_PORT
-          value: "{{ .Values.controller.services.etlPort }}"
+          value: "{{ .Values.workerETL.etlPort }}"
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
@@ -105,8 +105,6 @@ spec:
           mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
           readOnly: true
         ports:
-        - containerPort: {{ .Values.controller.services.etlPort }}
-          name: etl-port
         - containerPort: {{ .Values.controller.services.jupyterPort }}
           name: jupyter-port
         - containerPort: {{ .Values.controller.services.tensorboardPort }}
