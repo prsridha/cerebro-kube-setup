@@ -725,6 +725,22 @@ class CerebroInstaller:
             label = "type=cerebro-worker-etl"
             while not checkPodStatus(label, self.kube_namespace):
                 time.sleep(1)
+                
+            # write worker_ips to references
+            cmd = "kubectl get service -o json -l {}".format(label)
+            output = json.loads(run(cmd))
+            etl_ips = []
+            for pod in output["items"]:
+                ip = "http://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
+                etl_ips.append(ip)
+            
+            Path("reference").mkdir(parents=True, exist_ok=True)
+            with open("reference/worker_ips.txt", "w+") as f:
+                f.write(
+                    "ETL Worker IPs:\n")
+                f.write("\n".join(etl_ips))
+                f.write("\n\n" + json.dumps(etl_ips))
+                f.write("\n\n")
             
             print("ETL-Workers created successfully")
         
@@ -756,17 +772,17 @@ class CerebroInstaller:
             # write worker_ips to references
             cmd = "kubectl get service -o json -l {}".format(label)
             output = json.loads(run(cmd))
-            ips = []
+            mop_ips = []
             for pod in output["items"]:
                 ip = "http://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
-                ips.append(ip)
+                mop_ips.append(ip)
 
             Path("reference").mkdir(parents=True, exist_ok=True)
-            with open("reference/ml_worker_ips.txt", "w+") as f:
+            with open("reference/worker_ips.txt", "a+") as f:
                 f.write(
                     "Model Hopper Worker IPs:\n")
-                f.write("\n".join(ips))
-                f.write("\n\n" + json.dumps(ips))
+                f.write("\n".join(mop_ips))
+                f.write("\n\n" + json.dumps(mop_ips))
         
         print("Created the workers")
 
