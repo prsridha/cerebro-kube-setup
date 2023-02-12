@@ -82,8 +82,8 @@ spec:
           value: {{ .Values.creds.gitServer }}
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
-        - name: ETL_PORT
-          value: "{{ .Values.workerETL.rcpport }}"
+        - name: RPC_PORT
+          value: "{{ .Values.workerETL.rpcport }}"
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
