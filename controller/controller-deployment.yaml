@@ -83,7 +83,7 @@ spec:
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
         - name: ETL_PORT
-          value: "{{ .Values.workerETL.etlPort }}"
+          value: "{{ .Values.workerETL.rcpport }}"
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
