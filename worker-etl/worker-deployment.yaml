@@ -78,6 +78,8 @@ spec:
           value: "etl"
         - name: RPC_PORT
           value: "{{ .Values.workerETL.rpcport }}"
+        - name: CORES_PERCENT
+          value: "{{ .Values.workerETL.coresPercent }}"
         volumeMounts:
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
