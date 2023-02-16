@@ -36,7 +36,7 @@ cluster:
   numWorkers: 4
   region: ca-central-1
   controllerInstance: t3.2xlarge
-  workerInstance:
+  workerInstances:
   - g4dn.12xlarge
   volumeSize: 200
   efsFileSystemIds:
