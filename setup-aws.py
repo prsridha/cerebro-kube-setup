@@ -115,7 +115,7 @@ class CerebroInstaller:
         values_yaml["cluster"]["workerSpotInstance"] = user_yaml["workerSpotInstance"]
         values_yaml["cluster"]["numWorkers"] = user_yaml["numWorkers"]
         values_yaml["cluster"]["controllerInstance"] = user_yaml["controllerInstance"]
-        values_yaml["cluster"]["workerInstances"] = user_yaml["workerInstance"]
+        values_yaml["cluster"]["workerInstances"] = user_yaml["workerInstances"]
         values_yaml["workerETL"]["percentETLCores"] = user_yaml["percentETLCores"]
             
         with open("values.yaml", "w") as f:
