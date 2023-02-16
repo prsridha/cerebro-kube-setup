@@ -3,6 +3,6 @@ clusterRegion: ca-central-1
 workerSpotInstance: false
 numWorkers: 4
 controllerInstance: t3.2xlarge
-workerInstance:
+workerInstances:
 - g4dn.12xlarge
 percentETLCores: 50
