@@ -97,10 +97,29 @@ class CerebroInstaller:
         self.values_yaml = None
         self.kube_namespace = "cerebro"
         
+        self.copyUserYAML()
         with open('values.yaml', 'r') as yamlfile:
             self.values_yaml = yaml.safe_load(yamlfile)
             
-        self.num_workers = self.values_yaml["cluster"]["workers"]
+        self.num_workers = self.values_yaml["cluster"]["numWorkers"]
+        
+    def copyUserYAML(self):
+        with open('user-values.yaml', 'r') as yamlfile:
+            user_yaml = yaml.safe_load(yamlfile)
+        
+        with open('values.yaml', 'r') as yamlfile:
+            values_yaml = yaml.safe_load(yamlfile)
+            
+        values_yaml["cluster"]["name"] = user_yaml["clusterName"]
+        values_yaml["cluster"]["region"] = user_yaml["clusterRegion"]
+        values_yaml["cluster"]["workerSpotInstance"] = user_yaml["workerSpotInstance"]
+        values_yaml["cluster"]["numWorkers"] = user_yaml["numWorkers"]
+        values_yaml["cluster"]["controllerInstance"] = user_yaml["controllerInstance"]
+        values_yaml["cluster"]["workerInstances"] = user_yaml["workerInstance"]
+        values_yaml["workerETL"]["percentETLCores"] = user_yaml["percentETLCores"]
+            
+        with open("values.yaml", "w") as f:
+            yaml.safe_dump(values_yaml, f)
         
     def initializeFabric(self):
         # get controller and worker addresses
@@ -344,9 +363,9 @@ class CerebroInstaller:
         
         cmd1 = """
         helm install prom prometheus-community/kube-prometheus-stack \
-        --namespace prom-metrics \
-        --values {}
-        """.format(prom_path)
+        --namespace prom-metrics """
+        # --values {}
+        # .format(prom_path)
         
         cmd2 = "helm repo add grafana https://grafana.github.io/helm-charts"
         cmd3 = "helm upgrade --install loki grafana/loki-stack -n prom-metrics"
@@ -921,7 +940,7 @@ class CerebroInstaller:
     
     def cleanUp(self):
         pod_names = getPodNames(self.kube_namespace)
-        n_workers = self.values_yaml["cluster"]["workers"]
+        n_workers = self.values_yaml["cluster"]["numWorkers"]
         self.initializeFabric()
         config.load_kube_config()
         v1 = client.CoreV1Api()
@@ -1033,7 +1052,7 @@ class CerebroInstaller:
         config.load_kube_config()
         v1 = client.CoreV1Api()
         pod_names = getPodNames(self.kube_namespace)
-        n_workers = self.values_yaml["cluster"]["workers"]
+        n_workers = self.values_yaml["cluster"]["numWorkers"]
         self.initializeFabric()
         
         # run git pull on controller
@@ -1075,7 +1094,7 @@ class CerebroInstaller:
         config.load_kube_config()
         v1 = client.CoreV1Api()
         pod_names = getPodNames(self.kube_namespace)
-        n_workers = self.values_yaml["cluster"]["workers"]
+        n_workers = self.values_yaml["cluster"]["numWorkers"]
         self.initializeFabric()
         
         # run git pull on controller
@@ -1128,7 +1147,7 @@ class CerebroInstaller:
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ worker.instanceType }}", worker_instance_type)
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ volumeSize }}", str(self.values_yaml["cluster"]["volumeSize"]))
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ desiredCapacity }}", str(self.num_workers))
-        eks_cluster_yaml = eks_cluster_yaml.replace("{{ workerSpot }}", str(self.values_yaml["cluster"]["workerSpot"]))
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ spot }}", str(self.values_yaml["cluster"]["workerSpotInstance"]))
         
         with open("init_cluster/eks_cluster.yaml", "w") as yamlfile:
             yamlfile.write(eks_cluster_yaml)

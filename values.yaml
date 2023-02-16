@@ -15,9 +15,9 @@ controller:
     userRepoMountPath: /user-repo
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
-    cerebroRepoBranch: feature/multi-gpu-mop
+    cerebroRepoBranch: demo
     userRepoURL: git@github.com:prsridha/coco-mop.git
-    userRepoBranch: feature/multi-gpu-mop
+    userRepoBranch: demo
     gitSyncImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/git-sync:latest
     image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   services:
@@ -32,18 +32,18 @@ creds:
 namespace: cerebro
 cluster:
   name: cerebro-kube-small-1
-  workerSpot: false
-  workers: 4
+  workerSpotInstance: false
+  numWorkers: 4
   region: ca-central-1
   controllerInstance: t3.2xlarge
   workerInstance:
   - g4dn.12xlarge
   volumeSize: 200
   efsFileSystemIds:
-    checkpointFsId: fs-0c512dab1ef7703d2
-    dataFsId: fs-09e46a595ffadc290
-    metricsFsId: fs-071fe9628d1893a62
-    configFsId: fs-016d798adcb391cc2
+    checkpointFsId: fs-0f9fa265d0f2ca258
+    dataFsId: fs-0644987cf6d7e91a8
+    metricsFsId: fs-09ad76596f4cc0e84
+    configFsId: fs-0ab20ce8c1fda7629
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   nodeLocalListenIP: 169.254.0.0
