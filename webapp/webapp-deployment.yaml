@@ -1,0 +1,107 @@
+# Controller Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cerebro-webapp
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: cerebro-webapp
+      type: cerebro-webapp
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: cerebro-webapp
+        type: cerebro-webapp
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cerebro/nodename
+                operator: In
+                values:
+                - node0
+      serviceAccountName: s3-eks-sa
+      initContainers:
+      - name: git-sync-cerebro
+        image: {{ .Values.controller.git.gitSyncImage }}
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: webapp-data
+          mountPath: {{ .Values.controller.volumes.webappMountPath }}
+        - name: git-secret
+          mountPath: /etc/git-secret
+        env:
+        - name: GIT_SYNC_REPO
+          value: {{ .Values.controller.git.cerebroRepoURL }}
+        - name: GIT_SYNC_BRANCH
+          value: {{ .Values.controller.git.cerebroRepoBranch }}
+        - name: GIT_SYNC_ROOT
+          value: {{ .Values.controller.volumes.cerebroRepoMountPath }}
+        - name: GIT_SYNC_SSH
+          value: "true"
+        - name: GIT_SYNC_SERVER
+          value: {{ .Values.creds.gitServer }}
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: cerebro-webapp-container
+        image: {{ .Values.controller.git.image }}
+        imagePullPolicy: Always
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        workingDir: {{ .Values.controller.volumes.webappMountPath }}
+        env:
+        - name: POD_TYPE
+          value: "webapp"
+        - name: GIT_SYNC_SERVER
+          value: {{ .Values.creds.gitServer }}
+        volumeMounts:
+        - name: kube-config
+          mountPath: /root/.kube
+        - name: git-secret
+          mountPath: /etc/git-secret
+        - name: webapp-data
+          mountPath: {{ .Values.controller.volumes.webappMountPath }}
+        - name: cerebro-hardware-info
+          mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
+          readOnly: true
+        ports:
+        - containerPort: {{ .Values.controller.services.webappUINodePort }}
+          name: webapp-ui-port
+        - containerPort: {{ .Values.controller.services.webappNodePort }}
+          name: webapp-backend-port
+      volumes:
+      - name: cerebro-repo
+        hostPath:
+          path: {{ .Values.controller.volumes.cerebroRepoHostPath }}
+          type: Directory
+      - name: user-repo
+        hostPath:
+          path: {{ .Values.controller.volumes.userRepoHostPath }}
+          type: Directory
+      - name: cerebro-checkpoint-storage
+        persistentVolumeClaim:
+          claimName: cerebro-checkpoint-pvc
+      - name: cerebro-config-storage
+        persistentVolumeClaim:
+          claimName: cerebro-config-pvc
+      - name: cerebro-metrics-storage
+        persistentVolumeClaim:
+          claimName: cerebro-metrics-pvc
+      - name: cerebro-data-storage
+        persistentVolumeClaim:
+          claimName: cerebro-data-pvc
+      - name: cerebro-hardware-info
+        configMap:
+          name: node-hardware-info
+      - name: kube-config
+        secret:
+          secretName: kube-config
+      - name: git-secret
+        secret:
+          defaultMode: 256
+          secretName: git-creds # your-ssh-key

@@ -2,13 +2,11 @@ import os
 import json
 import time
 import fire
-import psutil
 import webbrowser
 import subprocess
 from git import Repo
 import oyaml as yaml
 from pathlib import Path
-from pprint import pprint
 from kubernetes import client, config
 from fabric2 import ThreadingGroup, Connection
 
@@ -346,7 +344,7 @@ class CerebroInstaller:
         Path(dir).mkdir(parents=True, exist_ok=True)
         
         node = "node0"
-        prometheus_port = self.values_yaml["cluster"]["prometheusNodePort"]
+        prometheus_port = self.values_yaml["cluster"]["networking"]["prometheusNodePort"]
         
         # pull Prometheus values file
         prom_path = "init_cluster/kube-prometheus-stack.values"
@@ -542,7 +540,7 @@ class CerebroInstaller:
         cmd2 = "kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}"
         kubedns = run(cmd2)
         domain = "cluster.local"
-        localdns = self.values_yaml["cluster"]["nodeLocalListenIP"]
+        localdns = self.values_yaml["cluster"]["networking"]["nodeLocalListenIP"]
         
         with open("init_cluster/nodelocaldns_template.yaml", "r") as f:
             yml = f.read()
@@ -584,15 +582,22 @@ class CerebroInstaller:
         # create configmap
         cmd = "kubectl create -n {} configmap node-hardware-info --from-file=init_cluster/node_hardware_info.json".format(self.kube_namespace)
         run(cmd)
-        
         run("rm {}".format(path))
-        
         print("Created configmap for node hardware info")
         
+        # add kube-config and create RBAC rules
+        cmds = ["kubectl create -n {} secret generic kube-config --from-file={}".format(
+                self.kube_namespace, os.path.expanduser("~/.kube/config")),
+                "kubectl create -f init_cluster/rbac_clusterroles.yaml"
+            ]
+        for cmd in cmds:
+            run(cmd)
+        print("Setup kube-config")
+
         # add ingress rule for JupyterNotebook, Tensorboard and WebServer ports on security group
-        jupyterNodePort = self.values_yaml["cluster"]["jupyterNodePort"]
-        tensorboardNodePort = self.values_yaml["cluster"]["tensorboardNodePort"]
-        webappNodePort = self.values_yaml["cluster"]["webappNodePort"]
+        jupyterNodePort = self.values_yaml["controller"]["services"]["jupyterNodePort"]
+        tensorboardNodePort = self.values_yaml["controller"]["services"]["tensorboardNodePort"]
+        webappNodePort = self.values_yaml["controller"]["services"]["webappNodePort"]
 
         cluster_name = self.values_yaml["cluster"]["name"]
         
@@ -723,28 +728,10 @@ class CerebroInstaller:
             print("Deleted CloudFormation Stack")
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
    
-    def testing(self):
-        # add ingress rule for ports on security group
-        cluster_name = self.values_yaml["cluster"]["name"]
-        
-        cmd1 = "aws ec2 describe-security-groups"
-        out = json.loads(run(cmd1))
-        for sg in out["SecurityGroups"]:
-            if cluster_name in sg["GroupName"] and "controller" in sg["GroupName"]:
-                controller_sg_id = sg["GroupId"]
-        
-        
-        cmd2 = """aws ec2 authorize-security-group-ingress \
-        --group-id {} \
-        --protocol tcp \
-        --port {} \
-        --cidr 0.0.0.0/0
-        """
-        
-        out = run(cmd2.format(controller_sg_id, "31256"))
-        # out = run(cmd2.format(controller_sg_id, prometheus_port), haltException=False)
-
     def initWebApp(self):
+        pass
+   
+    def testing(self):
         pass
     
     # call the below functions from CLI

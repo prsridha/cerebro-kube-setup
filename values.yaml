@@ -14,7 +14,7 @@ controller:
     userRepoHostPath: /home/ec2-user/user-repo
     userRepoMountPath: /user-repo
     webappRepoHostPath: /home/ec2-user/web-app
-    webappMountPath: /data
+    webappMountPath: /webapp
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
     cerebroRepoBranch: demo
@@ -25,6 +25,10 @@ controller:
   services:
     daskPort: 8786
     jupyterPort: 8888
+    jupyterNodePort: 38888
+    tensorboardNodePort: 39999
+    webappNodePort: 308080
+    webappUINodePort: 30080
 creds:
   gitServer: github.com
   gitToken: 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
@@ -45,11 +49,9 @@ cluster:
     configFsId: fs-0528cdb1832382ac3
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
-  nodeLocalListenIP: 169.254.0.0
-  jupyterNodePort: 38888
-  tensorboardNodePort: 39999
-  webappNodePort: 30080
-  prometheusNodePort: 30090
+  networking:
+    nodeLocalListenIP: 169.254.0.0
+    prometheusNodePort: 30090
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
   port: 8787
