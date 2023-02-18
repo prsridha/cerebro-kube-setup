@@ -19,7 +19,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-port-forward-jupyter
+  name: cerebro-controller-jupyter-notebook
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
@@ -30,12 +30,13 @@ spec:
   ports:
     - port: {{ .Values.controller.services.jupyterPort }}
       targetPort: {{ .Values.controller.services.jupyterPort }}
+      nodePort: {{ .Values.controller}}
   type: NodePort
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-port-forward-tnsrbrd
+  name: cerebro-controller-tnsrbrd-dashboard
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
@@ -51,7 +52,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-port-forward-dask
+  name: cerebro-controller-dask-dashboard
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
