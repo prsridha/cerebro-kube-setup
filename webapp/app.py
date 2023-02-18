@@ -186,7 +186,7 @@ def saveParams():
     path = os.path.join(utilities.ROOT_PATH, "params.json")
     
     # add numWorkers field
-    params["numWorkers"] = valuesYaml["cluster"]["numWorkers"]
+    params["num_workers"] = valuesYaml["cluster"]["numWorkers"]
     
     with open(path, "w") as f:
         json.dump(params, f, indent=2)

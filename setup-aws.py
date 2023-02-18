@@ -744,6 +744,9 @@ class CerebroInstaller:
         out = run(cmd2.format(controller_sg_id, "31256"))
         # out = run(cmd2.format(controller_sg_id, prometheus_port), haltException=False)
 
+    def initWebApp(self):
+        pass
+    
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
