@@ -747,9 +747,30 @@ class CerebroInstaller:
         r = requests.post(url, files=files, data=values)
         pprint(r.content)
         print("Done")
-   
+
     def testing(self):
         pass
+    
+    # WILL BE DONE THROUGH UI
+    def webAppInitialize(self):
+        # initialize webapp by sending values.yaml file    
+        files = {'file': open('values.yaml','rb')}
+        host = self.values_yaml["cluster"]["URLs"]["publicDNSName"]
+        port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
+        url = "http://" + host + ":" + port + "/initialize"
+        r = requests.post(url, files=files)
+        pprint(r.content)
+        print("Done")
+        
+    def webAppSaveCode(self):
+        # initialize webapp by sending values.yaml file    
+        files = {'file': open('coco-mop.zip','rb')}
+        host = self.values_yaml["cluster"]["URLs"]["publicDNSName"]
+        port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
+        url = "http://" + host + ":" + port + "/save-code"
+        r = requests.post(url, files=files)
+        pprint(r.content)
+        print("Done")
     
     # call the below functions from CLI
     def createCluster(self):
