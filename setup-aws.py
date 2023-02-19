@@ -733,6 +733,9 @@ class CerebroInstaller:
         while not checkPodStatus(label):
             time.sleep(1)
         
+        # wait for server to start
+        time.sleep(5)
+        
         # initialize webapp by sending values.yaml file    
         files = {'file': open('values.yaml','rb')}
         values = {'filename': 'values.yaml'}
