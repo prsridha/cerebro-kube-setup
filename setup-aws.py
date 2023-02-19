@@ -2,7 +2,7 @@ import os
 import json
 import time
 import fire
-import webbrowser
+import requests
 import subprocess
 from git import Repo
 import oyaml as yaml
@@ -440,33 +440,9 @@ class CerebroInstaller:
                 break
         print(public_dns_name)
         
-        print(
-            "Access Grafana with this link:\nhttp://{}:{}".format(public_dns_name, port))
-        print("username: {}\npassword: {}".format("admin", "prom-operator"))
-        print("Add Loki Datasource with this url: \nhttp://loki:3100")
-        
-        print(
-            "Access Prometheus with this link:\nhttp://{}:{}".format(public_dns_name, prometheus_port))
-
-        home = self.home
-        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
-        with open(home + "/reference/metrics_monitor_credentials.txt", "w+") as f:
-            f.write(
-                "Access Grafana with this link:\nhttp://{}:{}\n".format(public_dns_name, port))
-            f.write("username: {}\npassword: {}\n".format(
-                "admin", "prom-operator"))
-            f.write(
-                "Add Loki Datasource with this url:\nhttp://loki:3100\n")
-            f.write(
-                "\nAccess Prometheus with this link:\nhttp://{}:{}\n".format(public_dns_name, prometheus_port))
-
-        # delete temporarily created files
-        cmd = "rm -rf {}".format(dir)
-        run(cmd)
-        
-        # open Grafana URL
-        url = "http://{}:{}".format(public_dns_name, port)
-        webbrowser.open(url)
+        self.values_yaml["cluster"]["URLs"]["publicDNSName"] = public_dns_name
+        with open("values.yaml", "w") as f:
+            yaml.safe_dump(self.values_yaml, f)
 
     def patchNodes(self):
         # load fabric connections
@@ -528,11 +504,11 @@ class CerebroInstaller:
         print("Created Cerebro namespace, set context and added kube-config secret")
     
         # create kubernetes secret using ssh key and git server as known host
-        known_hosts_cmd = "ssh-keyscan {} > ./reference/known_hosts".format(self.values_yaml["creds"]["gitServer"])
+        known_hosts_cmd = "ssh-keyscan {} > ./init_cluster/known_hosts".format(self.values_yaml["creds"]["gitServer"])
         github_known_hosts = run(known_hosts_cmd, capture_output=False)
-        kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=./reference/known_hosts"
+        kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=./init_cluster/known_hosts"
         run(kube_git_secret.format(github_known_hosts))
-        rm_known_hosts = "rm ./reference/known_hosts"
+        rm_known_hosts = "rm ./init_cluster/known_hosts"
         run(rm_known_hosts)
         print("Created kubernetes secret for git")
 
@@ -728,8 +704,35 @@ class CerebroInstaller:
             print("Deleted CloudFormation Stack")
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
    
-    def initWebApp(self):
-        pass
+    def installWebApp(self):
+        cmds = [
+        "mkdir -p charts",
+        "helm create charts/cerebro-webapp",
+        "rm -rf charts/cerebro-webapp/templates/*",
+        "cp ./webapp/* charts/cerebro-webapp/templates/",
+        "cp values.yaml charts/cerebro-webapp/values.yaml",
+        "helm install --namespace=cerebro webapp charts/cerebro-webapp/",
+        "rm -rf charts/cerebro-webapp"
+        ]
+
+        for cmd in cmds:
+            time.sleep(1)
+            out = run(cmd, capture_output=False)
+
+        print("Created WebApp deployment")
+        
+        label = "app=cerebro-webapp"
+
+        print("Waiting for pods to start...")
+        while not checkPodStatus(label):
+            time.sleep(1)
+        
+        # initialize webapp by sending values.yaml file    
+        files = {'file': open('values.yaml','rb')}
+        values = {'filename': 'values.yaml'}
+        url = self.values_yaml["cluster"]["URLs"]["publicDNSName"] + ":" + str(self.values_yaml["controller"]["services"]["webappNodePort"])
+        r = requests.post(url, files=files, data=values)
+        print("Done")
    
     def testing(self):
         pass
@@ -776,6 +779,9 @@ class CerebroInstaller:
 
         # initialize basic cerebro components
         self.initCerebro()
+        
+        # install webapp
+        self.installWebApp()
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
