@@ -41,7 +41,7 @@ def run(cmd, shell=True, capture_output=True, text=True, haltException=True):
         print(str(e))
         raise Exception
 
-def checkPodStatus(label, namespace):
+def checkPodStatus(label, namespace="cerebro"):
     from kubernetes import client, config
 
     config.load_kube_config()
@@ -705,6 +705,12 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
    
     def installWebApp(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        # create mount dir on host
+        self.conn.run("mkdir -p {}".format(self.values_yaml["controller"]["volumes"]["webappHostPath"]))
+        
         cmds = [
         "mkdir -p charts",
         "helm create charts/cerebro-webapp",

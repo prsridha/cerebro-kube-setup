@@ -13,7 +13,7 @@ controller:
     cerebroRepoMountPath: /cerebro-repo
     userRepoHostPath: /home/ec2-user/user-repo
     userRepoMountPath: /user-repo
-    webappRepoHostPath: /home/ec2-user/web-app
+    webappHostPath: /home/ec2-user/web-app
     webappMountPath: /webapp
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
@@ -27,9 +27,9 @@ controller:
     webappPort: 8080
     webappUIPort: 80
     jupyterPort: 8888
-    jupyterNodePort: 38888
-    tensorboardNodePort: 39999
-    webappNodePort: 38080
+    jupyterNodePort: 30888
+    tensorboardNodePort: 30999
+    webappNodePort: 30083
     webappUINodePort: 30080
 creds:
   gitServer: github.com

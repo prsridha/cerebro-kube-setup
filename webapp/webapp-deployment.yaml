@@ -52,7 +52,7 @@ spec:
       - name: cerebro-webapp-container
         image: {{ .Values.controller.git.image }}
         imagePullPolicy: Always
-        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        command: [ "/bin/bash", "/webapp/cerebro-kube/init.sh"]
         workingDir: /webapp/cerebro-kube
         env:
         - name: POD_TYPE
@@ -71,30 +71,14 @@ spec:
           readOnly: true
         ports:
         - containerPort: {{ .Values.controller.services.webappUINodePort }}
-          name: webapp-ui-port
+          name: ui-port
         - containerPort: {{ .Values.controller.services.webappNodePort }}
-          name: webapp-backend-port
+          name: backend-port
       volumes:
-      - name: cerebro-repo
+      - name: webapp-data
         hostPath:
-          path: {{ .Values.controller.volumes.cerebroRepoHostPath }}
+          path: {{ .Values.controller.volumes.webappHostPath }}
           type: Directory
-      - name: user-repo
-        hostPath:
-          path: {{ .Values.controller.volumes.userRepoHostPath }}
-          type: Directory
-      - name: cerebro-checkpoint-storage
-        persistentVolumeClaim:
-          claimName: cerebro-checkpoint-pvc
-      - name: cerebro-config-storage
-        persistentVolumeClaim:
-          claimName: cerebro-config-pvc
-      - name: cerebro-metrics-storage
-        persistentVolumeClaim:
-          claimName: cerebro-metrics-pvc
-      - name: cerebro-data-storage
-        persistentVolumeClaim:
-          claimName: cerebro-data-pvc
       - name: cerebro-hardware-info
         configMap:
           name: node-hardware-info
