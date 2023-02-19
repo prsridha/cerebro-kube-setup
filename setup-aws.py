@@ -7,6 +7,7 @@ import subprocess
 from git import Repo
 import oyaml as yaml
 from pathlib import Path
+from pprint import pprint
 from kubernetes import client, config
 from fabric2 import ThreadingGroup, Connection
 
@@ -739,8 +740,12 @@ class CerebroInstaller:
         # initialize webapp by sending values.yaml file    
         files = {'file': open('values.yaml','rb')}
         values = {'filename': 'values.yaml'}
-        url = self.values_yaml["cluster"]["URLs"]["publicDNSName"] + ":" + str(self.values_yaml["controller"]["services"]["webappNodePort"])
+        
+        host = self.values_yaml["cluster"]["URLs"]["publicDNSName"]
+        port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
+        url = "http://" + host + ":" + port + "/initialize"
         r = requests.post(url, files=files, data=values)
+        pprint(r.content)
         print("Done")
    
     def testing(self):
