@@ -24,6 +24,8 @@ controller:
     image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   services:
     daskPort: 8786
+    webappPort: 8080
+    webappUIPort: 80
     jupyterPort: 8888
     jupyterNodePort: 38888
     tensorboardNodePort: 39999

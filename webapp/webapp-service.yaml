@@ -1,66 +1,35 @@
-# Controller Service 
+# Webapp Service 
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-service
+  name: cerebro-webapp-service
   namespace: {{ .Release.Namespace }}
   labels:
-    type: cerebro-controller-svc
-    serviceApp: dask
+    type: cerebro-webapp-svc
+    serviceApp: webapp
 spec:
   selector:
-    app: cerebro-controller
+    app: cerebro-webapp
   ports:
   - protocol: "TCP"
-    port: {{ .Values.controller.services.daskPort }}
-    targetPort: {{ .Values.controller.services.daskPort }}
+    port: {{ .Values.controller.services.webappPort }}
+    targetPort: {{ .Values.controller.services.webappPort }}
+    nodePort: {{ .Values.controller.services.webappNodePort }}
   type: NodePort
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-jupyter-notebook
+  name: cerebro-webapp-ui
   namespace: {{ .Release.Namespace }}
   labels:
-    type: cerebro-controller-svc
-    serviceApp: jupyter
+    type: cerebro-webapp-ui
+    serviceApp: webapp
 spec:
   selector:
-    app: cerebro-controller
+    app: cerebro-webapp
   ports:
-    - port: {{ .Values.controller.services.jupyterPort }}
-      targetPort: {{ .Values.controller.services.jupyterPort }}
-      nodePort: {{ .Values.controller}}
-  type: NodePort
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: cerebro-controller-tnsrbrd-dashboard
-  namespace: {{ .Release.Namespace }}
-  labels:
-    type: cerebro-controller-svc
-    serviceApp: tensorboard
-spec:
-  selector:
-    app: cerebro-controller
-  ports:
-    - port: {{ .Values.controller.services.tensorboardPort }}
-      targetPort: {{ .Values.controller.services.tensorboardPort }}
-  type: NodePort
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: cerebro-controller-dask-dashboard
-  namespace: {{ .Release.Namespace }}
-  labels:
-    type: cerebro-controller-svc
-    serviceApp: dask
-spec:
-  selector:
-    app: cerebro-controller
-  ports:
-    - port: {{ .Values.controller.services.daskDashboardPort }}
-      targetPort: {{ .Values.controller.services.daskDashboardPort }}
+    - port: {{ .Values.controller.services.webappUIPort }}
+      targetPort: {{ .Values.controller.services.webappUIPort }}
+      nodePort: {{ .Values.controller.services.webappUINodePort}}
   type: NodePort
