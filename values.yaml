@@ -24,10 +24,12 @@ controller:
     image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   services:
     daskPort: 8786
+    daskDashboardPort: 8787
     webappPort: 8080
     webappUIPort: 80
     jupyterPort: 8888
     jupyterNodePort: 30888
+    tensorboardPort: 6006
     tensorboardNodePort: 30999
     webappNodePort: 30083
     webappUINodePort: 30080
@@ -45,17 +47,17 @@ cluster:
   - g4dn.12xlarge
   volumeSize: 200
   efsFileSystemIds:
-    checkpointFsId: fs-00c3163aee3288b80
-    dataFsId: fs-021cdc05f5d68e7bf
-    metricsFsId: fs-09b5bfee1a0d7c7a3
-    configFsId: fs-0ec0ba02a7713c472
+    checkpointFsId: fs-0439a83b8f3b71ff5
+    dataFsId: fs-0a66d5f96be5621b2
+    metricsFsId: fs-0d916438adfdadcb7
+    configFsId: fs-06a665f7f02bcde22
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   networking:
     nodeLocalListenIP: 169.254.0.0
     prometheusNodePort: 30090
   URLs:
-    publicDNSName: ec2-3-96-153-158.ca-central-1.compute.amazonaws.com
+    publicDNSName: ec2-35-182-84-106.ca-central-1.compute.amazonaws.com
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
   port: 8787

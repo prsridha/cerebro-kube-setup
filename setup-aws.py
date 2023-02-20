@@ -587,6 +587,171 @@ class CerebroInstaller:
         out = run(cmd2.format(controller_sg_id, jupyterNodePort, haltException=False))
         out = run(cmd2.format(controller_sg_id, tensorboardNodePort, haltException=False))
         out = run(cmd2.format(controller_sg_id, webappNodePort, haltException=False))
+   
+    def createController(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        cmds = [
+            "mkdir -p charts",
+            "helm create charts/cerebro-controller",
+            "rm -rf charts/cerebro-controller/templates/*",
+            "cp ./controller/* charts/cerebro-controller/templates/",
+            "cp values.yaml charts/cerebro-controller/values.yaml",
+            "helm install --namespace=cerebro controller charts/cerebro-controller/",
+            "rm -rf charts/cerebro-controller"
+        ]
+
+        for cmd in cmds:
+            time.sleep(1)
+            out = run(cmd, capture_output=False)
+
+        print("Created Controller deployment")
+        
+        label = "app=cerebro-controller"
+
+        print("Waiting for pods to start...")
+        while not checkPodStatus(label):
+            time.sleep(1)
+        
+        # add all permissions to repos  
+        cmd1 = "sudo chmod -R 777 /home/ec2-user/cerebro-repo/cerebro-kube"
+        cmd2 = "sudo chmod -R 777 /home/ec2-user/user-repo"
+        self.conn.sudo(cmd1)
+        self.conn.sudo(cmd2)
+        print("Added permissions to repos")
+
+        print("Done")
+
+    def createWorkers(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        # create ETL Workers
+        cmds = [
+            "mkdir -p charts",
+            "helm create charts/cerebro-worker-etl",
+            "rm -rf charts/cerebro-worker-etl/templates/*",
+            "cp worker-etl/* charts/cerebro-worker-etl/templates/",
+            "cp values.yaml charts/cerebro-worker-etl/values.yaml"
+        ]
+        c = "helm install --namespace={n} worker-etl-{id} charts/cerebro-worker-etl --set workerID={id}"
+        
+        for i in range(1, self.num_workers + 1):
+            cmds.append(
+                c.format(id=i, n=self.kube_namespace))
+        
+        for cmd in cmds:
+            time.sleep(0.5)
+            run(cmd, capture_output=False)
+        run("rm -rf charts")
+        
+        print("Waiting for ETL Worker start-up")
+        label = "type=cerebro-worker-etl"
+        while not checkPodStatus(label):
+            time.sleep(1)
+        
+        print("ETL-Workers created successfully")
+        
+        # Create MOP Workers
+        cmds = [
+            "mkdir -p charts",
+            "helm create charts/cerebro-worker-mop",
+            "rm -rf charts/cerebro-worker-mop/templates/*",
+            "cp worker-mop/* charts/cerebro-worker-mop/templates/",
+            "cp values.yaml charts/cerebro-worker-mop/values.yaml",
+        ]
+        c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id}"
+        
+        for i in range(1, self.num_workers + 1):
+            cmds.append(
+                c.format(id=i, n="cerebro"))
+        
+        for cmd in cmds:
+            time.sleep(0.5)
+            run(cmd, capture_output=False)
+        run("rm -rf charts")
+        
+        print("Waiting for MOP Worker start-up")
+        label = "type=cerebro-worker-mop"
+        while not checkPodStatus(label):
+            time.sleep(1)
+        
+        print("Created the workers")
+       
+    def createWebApp(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        # create mount dir on host
+        self.conn.run("mkdir -p {}".format(self.values_yaml["controller"]["volumes"]["webappHostPath"]))
+        
+        cmds = [
+        "mkdir -p charts",
+        "helm create charts/cerebro-webapp",
+        "rm -rf charts/cerebro-webapp/templates/*",
+        "cp ./webapp/* charts/cerebro-webapp/templates/",
+        "cp values.yaml charts/cerebro-webapp/values.yaml",
+        "helm install --namespace=cerebro webapp charts/cerebro-webapp/",
+        "rm -rf charts/cerebro-webapp"
+        ]
+
+        for cmd in cmds:
+            time.sleep(1)
+            out = run(cmd, capture_output=False)
+
+        print("Created WebApp deployment")
+        
+        label = "app=cerebro-webapp"
+
+        print("Waiting for pods to start...")
+        while not checkPodStatus(label):
+            time.sleep(1)
+        
+        print("Done")
+
+    def cleanUp(self):
+        podNames = getPodNames()
+        
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        
+        # clean up Workers
+        cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
+        cmd2 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro-repo/*' "
+        cmd3 = "kubectl exec -t {} -- bash -c 'rm -rf /user-repo/*' "
+        for pod in podNames["mop_workers"]:
+            run(cmd1.format(pod), haltException=False)
+            run(cmd2.format(pod), haltException=False)
+            run(cmd3.format(pod), haltException=False)
+        helm_etl = ["worker-etl-" + str(i) for i in range(1, self + 1)]
+        cmd4 = "helm delete " + " ".join(helm_etl)
+        run(cmd4, capture_output=False, haltException=False)
+        
+        helm_mop = ["worker-mop-" + str(i) for i in range(1, self.num_workers + 1)]
+        cmd5 = "helm delete " + " ".join(helm_mop)
+        run(cmd5, capture_output=False, haltException=False)
+        
+        print("Cleaned up workers")
+        
+        # clean up Controller
+        cmd1 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_data_storage/*'".format(podNames["controller"])
+        cmd2 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_config_storage/*'".format(podNames["controller"])
+        cmd3 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_checkpoint_storage/*'".format(podNames["controller"])
+        cmd4 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(podNames["controller"])
+        for i in [cmd1, cmd2, cmd3, cmd4]:
+            run(i, haltException=False)
+        cmd5 = "helm delete controller"
+        run(cmd5, haltException=False)
+        print("Cleaned up Controller")
+        
+        pods_list = v1.list_namespaced_pod("cerebro")
+        while pods_list.items != []:
+            time.sleep(1)
+            print("Waiting for pods to shutdown...")
+            pods_list = v1.list_namespaced_pod("cerebro")
+
+        print("Done")
     
     def deleteCluster(self):
         cluster_name = self.values_yaml["cluster"]["name"]
@@ -696,43 +861,6 @@ class CerebroInstaller:
             run(cmd11)
             print("Deleted CloudFormation Stack")
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
-   
-    def installWebApp(self):
-        # load fabric connections
-        self.initializeFabric()
-        
-        # create mount dir on host
-        self.conn.run("mkdir -p {}".format(self.values_yaml["controller"]["volumes"]["webappHostPath"]))
-        
-        cmds = [
-        "mkdir -p charts",
-        "helm create charts/cerebro-webapp",
-        "rm -rf charts/cerebro-webapp/templates/*",
-        "cp ./webapp/* charts/cerebro-webapp/templates/",
-        "cp values.yaml charts/cerebro-webapp/values.yaml",
-        "helm install --namespace=cerebro webapp charts/cerebro-webapp/",
-        "rm -rf charts/cerebro-webapp"
-        ]
-
-        for cmd in cmds:
-            time.sleep(1)
-            out = run(cmd, capture_output=False)
-
-        print("Created WebApp deployment")
-        
-        label = "app=cerebro-webapp"
-
-        print("Waiting for pods to start...")
-        while not checkPodStatus(label):
-            time.sleep(1)
-        
-        # wait for server to start
-        time.sleep(5)
-        
-        print("Done")
-        
-        #TODO: check if active using /health
-        self.webAppInitialize()
 
     def testing(self):
         pass
@@ -740,30 +868,12 @@ class CerebroInstaller:
     # WILL BE DONE THROUGH UI
     def webAppInitialize(self):
         # initialize webapp by sending values.yaml file
-        
-         # initialize webapp by sending required yaml files
-        cmds = [
-            "mkdir -p webapp-zip webapp-zip/controller webapp-zip/worker-etl webapp-zip/worker-mop",
-            "mkdir -p webapp-zip",
-            "cp -r controller webapp-zip/controller/",
-            "cp -r worker-etl webapp-zip/worker-etl",
-            "cp -r worker-mop webapp-zip/worker-mop",
-            "cp values.yaml webapp-zip/values.yaml",
-            "cd webapp-zip; zip -r ../webapp-zip.zip *",
-            "rm -rf webapp-zip"
-        ]
-        for cmd in cmds:
-            run(cmd)
-
-        files = {'file': open('webapp-zip.zip','rb')}        
+        files = {'file': open('values.yaml','rb')}
         host = self.values_yaml["cluster"]["URLs"]["publicDNSName"]
         port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
         url = "http://" + host + ":" + port + "/initialize"
         r = requests.post(url, files=files)
         pprint(r.content)
-        
-        cmd = "rm webapp-zip.zip"
-        run(cmd)
 
         print("Done")
         
