@@ -63,7 +63,7 @@ def checkPodStatus(label, namespace="cerebro"):
             return False
     return True
 
-def getPodNames(namespace):
+def getPodNames(namespace="cerebro"):
     label = "app=cerebro-controller"
     config.load_kube_config()
     v1 = client.CoreV1Api()
@@ -724,7 +724,7 @@ class CerebroInstaller:
             run(cmd1.format(pod), haltException=False)
             run(cmd2.format(pod), haltException=False)
             run(cmd3.format(pod), haltException=False)
-        helm_etl = ["worker-etl-" + str(i) for i in range(1, self + 1)]
+        helm_etl = ["worker-etl-" + str(i) for i in range(1, self.num_workers + 1)]
         cmd4 = "helm delete " + " ".join(helm_etl)
         run(cmd4, capture_output=False, haltException=False)
         
