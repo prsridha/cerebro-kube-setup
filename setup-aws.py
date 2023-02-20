@@ -711,6 +711,9 @@ class CerebroInstaller:
         print("Done")
 
     def cleanUp(self):
+        # load fabric connections
+        self.initializeFabric()
+        
         podNames = getPodNames()
         
         config.load_kube_config()
@@ -744,6 +747,10 @@ class CerebroInstaller:
         cmd5 = "helm delete controller"
         run(cmd5, haltException=False)
         print("Cleaned up Controller")
+        
+        # clean up webapp
+        self.conn.run("rm -rf /webapp")
+        run("helm delete webapp")
         
         pods_list = v1.list_namespaced_pod("cerebro")
         while pods_list.items != []:
