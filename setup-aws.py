@@ -728,14 +728,28 @@ class CerebroInstaller:
         
         # wait for server to start
         time.sleep(5)
+        
+        print("Done")
+        
+        #TODO: check if active using /health
+        self.webAppInitialize()
 
-        # initialize webapp by sending required yaml files
+    def testing(self):
+        pass
+    
+    # WILL BE DONE THROUGH UI
+    def webAppInitialize(self):
+        # initialize webapp by sending values.yaml file
+        
+         # initialize webapp by sending required yaml files
         cmds = [
+            "mkdir -p webapp-zip webapp-zip/controller webapp-zip/worker-etl webapp-zip/worker-mop",
             "mkdir -p webapp-zip",
-            "cp controller/ webapp-zip/controller/",
-            "cp worker/ webapp-zip/worker/",
+            "cp -r controller webapp-zip/controller/",
+            "cp -r worker-etl webapp-zip/worker-etl",
+            "cp -r worker-mop webapp-zip/worker-mop",
             "cp values.yaml webapp-zip/values.yaml",
-            "zip webapp-zip",
+            "cd webapp-zip; zip -r ../webapp-zip.zip *",
             "rm -rf webapp-zip"
         ]
         for cmd in cmds:
@@ -750,20 +764,7 @@ class CerebroInstaller:
         
         cmd = "rm webapp-zip.zip"
         run(cmd)
-        print("Done")
 
-    def testing(self):
-        pass
-    
-    # WILL BE DONE THROUGH UI
-    def webAppInitialize(self):
-        # initialize webapp by sending values.yaml file    
-        files = {'file': open('values.yaml','rb')}
-        host = self.values_yaml["cluster"]["URLs"]["publicDNSName"]
-        port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
-        url = "http://" + host + ":" + port + "/initialize"
-        r = requests.post(url, files=files)
-        pprint(r.content)
         print("Done")
         
     def webAppSaveCode(self):
