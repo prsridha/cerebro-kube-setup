@@ -497,6 +497,7 @@ class CerebroInstaller:
                 self.kube_namespace),
             "kubectl create -n {} secret generic kube-config --from-file={}".format(
                 self.kube_namespace, os.path.expanduser("~/.kube/config")),
+            "kubectl create -f init_cluster/rbac_clusterroles.yaml"
         ]
     
         for cmd in cmds1:
@@ -561,15 +562,6 @@ class CerebroInstaller:
         run(cmd)
         run("rm {}".format(path))
         print("Created configmap for node hardware info")
-        
-        # add kube-config and create RBAC rules
-        cmds = ["kubectl create -n {} secret generic kube-config --from-file={}".format(
-                self.kube_namespace, os.path.expanduser("~/.kube/config")),
-                "kubectl create -f init_cluster/rbac_clusterroles.yaml"
-            ]
-        for cmd in cmds:
-            run(cmd)
-        print("Setup kube-config")
 
         # add ingress rule for JupyterNotebook, Tensorboard and WebServer ports on security group
         jupyterNodePort = self.values_yaml["controller"]["services"]["jupyterNodePort"]
