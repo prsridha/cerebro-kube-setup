@@ -18,8 +18,6 @@ controller:
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
     cerebroRepoBranch: demo
-    userRepoURL: git@github.com:prsridha/coco-mop.git
-    userRepoBranch: demo
     gitSyncImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/git-sync:latest
     image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   services:

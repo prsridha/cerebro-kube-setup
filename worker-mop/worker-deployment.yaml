@@ -47,27 +47,6 @@ spec:
           value: {{ .Values.creds.gitServer }}
         securityContext:
           runAsUser: 0
-      - name: git-sync-user-repo
-        image: {{ .Values.controller.git.gitSyncImage }}
-        imagePullPolicy: Always
-        volumeMounts:
-        - name: user-repo
-          mountPath: {{ .Values.controller.volumes.userRepoMountPath }}
-        - name: git-secret
-          mountPath: /etc/git-secret
-        env:
-        - name: GIT_SYNC_REPO
-          value: {{ .Values.controller.git.userRepoURL }}
-        - name: GIT_SYNC_BRANCH
-          value: {{ .Values.controller.git.userRepoBranch }}
-        - name: GIT_SYNC_ROOT
-          value: {{ .Values.controller.volumes.userRepoMountPath }}
-        - name: GIT_SYNC_SSH
-          value: "true"
-        - name: GIT_SYNC_SERVER
-          value: {{ .Values.creds.gitServer }}
-        securityContext:
-          runAsUser: 0
       containers:
       - name: cerebro-worker-mop-{{ .Values.workerID }}-container
         image: {{ .Values.controller.git.image }}
