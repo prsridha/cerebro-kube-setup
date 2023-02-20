@@ -728,16 +728,28 @@ class CerebroInstaller:
         
         # wait for server to start
         time.sleep(5)
-        
-        # initialize webapp by sending values.yaml file    
-        files = {'file': open('values.yaml','rb')}
-        values = {'filename': 'values.yaml'}
-        
+
+        # initialize webapp by sending required yaml files
+        cmds = [
+            "mkdir -p webapp-zip",
+            "cp controller/ webapp-zip/controller/",
+            "cp worker/ webapp-zip/worker/",
+            "cp values.yaml webapp-zip/values.yaml",
+            "zip webapp-zip",
+            "rm -rf webapp-zip"
+        ]
+        for cmd in cmds:
+            run(cmd)
+
+        files = {'file': open('webapp-zip.zip','rb')}        
         host = self.values_yaml["cluster"]["URLs"]["publicDNSName"]
         port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
         url = "http://" + host + ":" + port + "/initialize"
-        r = requests.post(url, files=files, data=values)
+        r = requests.post(url, files=files)
         pprint(r.content)
+        
+        cmd = "rm webapp-zip.zip"
+        run(cmd)
         print("Done")
 
     def testing(self):
