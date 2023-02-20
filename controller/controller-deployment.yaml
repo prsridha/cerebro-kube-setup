@@ -16,6 +16,7 @@ spec:
         app: cerebro-controller
         type: cerebro-controller
     spec:
+      hostname: cerebro-controller
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

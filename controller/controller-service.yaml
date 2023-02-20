@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-service
+  name: controllerdasksvc
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
@@ -19,7 +19,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-jupyter-notebook
+  name: jupyternotebooksvc
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
@@ -36,7 +36,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-tnsrbrd-dashboard
+  name: tensorboardsvc
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
@@ -53,7 +53,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-dask-dashboard
+  name: daskdashboardsvc
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc

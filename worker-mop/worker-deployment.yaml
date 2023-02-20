@@ -16,6 +16,7 @@ spec:
         app: cerebro-worker-mop-{{.Values.workerID}}
         type: cerebro-worker-mop
     spec:
+      hostname: cerebro-worker-mop-{{ .Values.workerID }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
