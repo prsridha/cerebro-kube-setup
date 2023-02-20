@@ -25,7 +25,7 @@ spec:
                 operator: In
                 values:
                 - node0
-      serviceAccountName: s3-eks-sa
+      serviceAccountName: default
       initContainers:
       - name: git-sync-cerebro
         image: {{ .Values.controller.git.gitSyncImage }}
