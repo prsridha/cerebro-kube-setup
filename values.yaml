@@ -55,7 +55,6 @@ cluster:
     nodeLocalListenIP: 169.254.0.0
     prometheusNodePort: 30090
     lokiPort: 3100
-  URLs:
     publicDNSName: ec2-15-223-49-97.ca-central-1.compute.amazonaws.com
 workerETL:
   workerDataPath: /cerebro_data_storage_worker

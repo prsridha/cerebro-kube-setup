@@ -441,7 +441,7 @@ class CerebroInstaller:
                 break
         print(public_dns_name)
         
-        self.values_yaml["cluster"]["URLs"]["publicDNSName"] = public_dns_name
+        self.values_yaml["cluster"]["networking"]["publicDNSName"] = public_dns_name
         with open("values.yaml", "w") as f:
             yaml.safe_dump(self.values_yaml, f)
 
@@ -891,7 +891,7 @@ class CerebroInstaller:
     def webAppInitialize(self):
         # initialize webapp by sending values.yaml file
         files = {'file': open('values.yaml','rb')}
-        host = self.values_yaml["cluster"]["URLs"]["publicDNSName"]
+        host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
         port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
         url = "http://" + host + ":" + port + "/initialize"
         r = requests.post(url, files=files)
@@ -902,7 +902,7 @@ class CerebroInstaller:
     def webAppSaveCode(self):
         # initialize webapp by sending values.yaml file    
         files = {'file': open('coco-mop.zip','rb')}
-        host = self.values_yaml["cluster"]["URLs"]["publicDNSName"]
+        host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
         port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
         url = "http://" + host + ":" + port + "/save-code"
         r = requests.post(url, files=files)
