@@ -11,7 +11,6 @@ spec:
         app: cerebro-worker-etl-{{.Values.workerID}}
         type: cerebro-worker-etl
     spec:
-      serviceAccountName: default
       hostname: cerebro-worker-etl-{{ .Values.workerID }}
       restartPolicy: Never
       affinity:

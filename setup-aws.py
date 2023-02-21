@@ -504,7 +504,22 @@ class CerebroInstaller:
             out = run(cmd)
             print(out)
         print("Created Cerebro namespace, set context and added kube-config secret")
-    
+        
+        # add EKS identity mapping for Role
+        cmd1 = "aws sts get-caller-identity"
+        cmd2 = """
+        eksctl create iamidentitymapping \
+            --cluster {} \
+            --region={} \
+            --arn arn:aws:iam::{}:role/copy-role \
+            --group system:nodes \
+            --no-duplicate-arns
+        """
+        account_id = json.loads(run(cmd1))["Account"]
+        cluster_name = self.values_yaml["cluster"]["name"]
+        cluster_region = self.values_yaml["cluster"]["region"]
+        run(cmd.format(cluster_name, cluster_region, account_id))
+            
         # create kubernetes secret using ssh key and git server as known host
         known_hosts_cmd = "ssh-keyscan {} > ./init_cluster/known_hosts".format(self.values_yaml["creds"]["gitServer"])
         github_known_hosts = run(known_hosts_cmd, capture_output=False)
@@ -938,7 +953,7 @@ class CerebroInstaller:
         self.initCerebro()
         
         # install webapp
-        self.installWebApp()
+        self.createWebApp()
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
