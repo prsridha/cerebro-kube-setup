@@ -46,7 +46,7 @@ spec:
         securityContext:
           runAsUser: 0
       containers:
-      - name: cerebro-worker-etl-{{ .Values.workerID }}-container
+      - name: cerebro-worker-etl-container
         image: {{ .Values.controller.git.image }}
         imagePullPolicy: Always
         command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
