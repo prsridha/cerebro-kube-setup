@@ -34,6 +34,7 @@ controller:
 creds:
   gitServer: github.com
   gitToken: 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
+  jupyterTokenSting: projectcerebro 
 namespace: cerebro
 cluster:
   name: cerebro-kube-small-1
