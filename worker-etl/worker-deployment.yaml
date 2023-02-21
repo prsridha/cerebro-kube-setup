@@ -61,6 +61,8 @@ spec:
         - name: DASK_SCHEDULER_IP
           value: "{{ .Values.workerETL.schedulerIP }}"
         volumeMounts:
+        - name: git-secret
+          mountPath: /etc/git-secret
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
         - name: user-repo
