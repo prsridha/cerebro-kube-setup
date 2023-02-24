@@ -498,7 +498,7 @@ class CerebroInstaller:
                 self.kube_namespace),
             "kubectl create -n {} secret generic kube-config --from-file={}".format(
                 self.kube_namespace, os.path.expanduser("~/.kube/config")),
-            "kubectl create -f init_cluster/rbac_clusterroles.yaml"
+            "kubectl create -f init_cluster/rbac_roles.yaml"
         ]
     
         for cmd in cmds1:
@@ -519,7 +519,7 @@ class CerebroInstaller:
         account_id = json.loads(run(cmd1))["Account"]
         cluster_name = self.values_yaml["cluster"]["name"]
         cluster_region = self.values_yaml["cluster"]["region"]
-        run(cmd.format(cluster_name, cluster_region, account_id))
+        run(cmd2.format(cluster_name, cluster_region, account_id))
             
         # create kubernetes secret using ssh key and git server as known host
         known_hosts_cmd = "ssh-keyscan {} > ./init_cluster/known_hosts".format(self.values_yaml["creds"]["gitServer"])
