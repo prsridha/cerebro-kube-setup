@@ -18,11 +18,8 @@ managedNodeGroups:
   labels:
     role: worker
   instanceTypes: 
-  - g4dn.8xlarge
-  - g4dn.4xlarge
-  - g5.4xlarge
-  - g5.8xlarge
-  desiredCapacity: 4
+  - g4dn.12xlarge
+  desiredCapacity: 3
   volumeSize: 200
   ami: ami-09e225cf6c5c13915
   availabilityZones:

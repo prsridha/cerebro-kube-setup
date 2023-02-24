@@ -1,21 +1,3 @@
-# Controller Service 
-apiVersion: v1
-kind: Service
-metadata:
-  name: controllerdasksvc
-  namespace: {{ .Release.Namespace }}
-  labels:
-    type: cerebro-controller-svc
-    serviceApp: dask
-spec:
-  selector:
-    app: cerebro-controller
-  ports:
-  - protocol: "TCP"
-    port: {{ .Values.controller.services.daskPort }}
-    targetPort: {{ .Values.controller.services.daskPort }}
-  type: NodePort
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -48,20 +30,4 @@ spec:
     - port: {{ .Values.controller.services.tensorboardPort }}
       targetPort: {{ .Values.controller.services.tensorboardPort }}
       nodePort: {{ .Values.controller.services.tensorboardNodePort }}
-  type: NodePort
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: daskdashboardsvc
-  namespace: {{ .Release.Namespace }}
-  labels:
-    type: cerebro-controller-svc
-    serviceApp: dask
-spec:
-  selector:
-    app: cerebro-controller
-  ports:
-    - port: {{ .Values.controller.services.daskDashboardPort }}
-      targetPort: {{ .Values.controller.services.daskDashboardPort }}
   type: NodePort

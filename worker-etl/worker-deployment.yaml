@@ -56,10 +56,10 @@ spec:
           value: "{{ .Values.workerID }}"
         - name: POD_TYPE
           value: "etl"
-        - name: PERCENT_ETL_CORES
-          value: "{{ .Values.workerETL.percentETLCores }}"
-        - name: DASK_SCHEDULER_IP
-          value: "{{ .Values.workerETL.schedulerIP }}"
+        - name: RPC_PORT
+          value: "{{ .Values.workerETL.rpcPort }}"
+        - name: CORES_PERCENT
+          value: "{{ .Values.workerETL.coresPercent }}"
         volumeMounts:
         - name: git-secret
           mountPath: /etc/git-secret
@@ -74,7 +74,7 @@ spec:
         - name: cerebro-controller-storage
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
         ports:
-        - containerPort: {{ .Values.workerETL.workerContainerPort }}
+        - containerPort: {{ .Values.workerETL.rpcPort }}
       volumes:
       - name: user-repo
         hostPath:

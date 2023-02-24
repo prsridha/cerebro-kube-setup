@@ -12,6 +12,6 @@ spec:
   ports:
   - name: "rpc-port"
     protocol: "TCP"
-    port: {{ .Values.workerMOP.rpcport }}
-    targetPort: {{ .Values.workerMOP.rpcport }}
+    port: {{ .Values.workerMOP.rpcPort }}
+    targetPort: {{ .Values.workerMOP.rpcPort }}
   type: ClusterIP

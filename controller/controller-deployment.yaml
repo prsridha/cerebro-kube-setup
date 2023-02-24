@@ -58,6 +58,8 @@ spec:
         env:
         - name: POD_TYPE
           value: "controller"
+        - name: RPC_PORT
+          value: "{{ .Values.workerETL.rpcPort }}"
         - name: GIT_SYNC_SERVER
           value: {{ .Values.creds.gitServer }}
         - name: ML_METRICS_LOGDIR
@@ -83,8 +85,6 @@ spec:
           mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
           readOnly: true
         ports:
-        - containerPort: {{ .Values.controller.services.daskPort }}
-          name: dask-port
         - containerPort: {{ .Values.controller.services.jupyterPort }}
           name: jupyter-port
         - containerPort: {{ .Values.controller.services.tensorboardPort }}
