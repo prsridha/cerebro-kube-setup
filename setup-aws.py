@@ -764,6 +764,20 @@ class CerebroInstaller:
         run(cmd5, haltException=False)
         print("Cleaned up Controller")
         
+        cmds =  [
+            "sudo rm -rf /home/ec2-user/cerebro-repo/*",
+            "sudo rm -rf /home/ec2-user/user-repo/*",
+            "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0",
+            "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
+        ]
+        try:
+            for cmd in cmds:
+                self.conn.run(cmd)
+                self.s.run(cmd)
+        except Exception as e:
+            print("Got error: " + str(e))
+        print("Deleted cerebro-repo and user-repo")
+        
         # clean up webapp
         self.conn.sudo("rm -rf /home/ec2-user/web-app")
         run("helm delete webapp")
