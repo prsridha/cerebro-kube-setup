@@ -376,6 +376,7 @@ class CerebroInstaller:
         
         # install DCGM exporter
         dcgm_path = "init_cluster/metrics_monitor/dcgm"
+        run("rm -rf {}".format(dcgm_path))
         Path(dcgm_path).mkdir(parents=True, exist_ok=True)
         Repo.clone_from("https://github.com/NVIDIA/gpu-monitoring-tools.git", dcgm_path)
         
