@@ -115,7 +115,7 @@ class CerebroInstaller:
         values_yaml["cluster"]["numWorkers"] = user_yaml["numWorkers"]
         values_yaml["cluster"]["controllerInstance"] = user_yaml["controllerInstance"]
         values_yaml["cluster"]["workerInstances"] = user_yaml["workerInstances"]
-        values_yaml["workerETL"]["percentETLCores"] = user_yaml["percentETLCores"]
+        values_yaml["workerETL"]["coresPercent"] = user_yaml["coresPercent"]
             
         with open("values.yaml", "w") as f:
             yaml.safe_dump(values_yaml, f)
@@ -966,9 +966,15 @@ class CerebroInstaller:
 
         # initialize basic cerebro components
         self.initCerebro()
-        
-        # install webapp
+
+        # creates Controller
+        self.createContoller()
+
+        # create webapp
         self.createWebApp()
+
+        # create Workers
+        self.createWorkers()
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)

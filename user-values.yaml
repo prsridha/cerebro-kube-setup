@@ -5,4 +5,4 @@ numWorkers: 3
 controllerInstance: t3.2xlarge
 workerInstances:
 - g4dn.12xlarge
-percentETLCores: 50
+coresPercent: 50
