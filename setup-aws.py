@@ -119,7 +119,7 @@ class CerebroInstaller:
             
         with open("values.yaml", "w") as f:
             yaml.safe_dump(values_yaml, f)
-        
+
     def initializeFabric(self):
         # get controller and worker addresses
         host = None
@@ -968,7 +968,7 @@ class CerebroInstaller:
         self.initCerebro()
 
         # creates Controller
-        self.createContoller()
+        self.createController()
 
         # create webapp
         self.createWebApp()
