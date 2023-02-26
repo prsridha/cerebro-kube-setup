@@ -60,8 +60,6 @@ spec:
           value: "controller"
         - name: RPC_PORT
           value: "{{ .Values.workerETL.rpcPort }}"
-        - name: GIT_SYNC_SERVER
-          value: {{ .Values.creds.gitServer }}
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
         volumeMounts:

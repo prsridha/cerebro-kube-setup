@@ -57,8 +57,6 @@ spec:
         env:
         - name: POD_TYPE
           value: "webapp"
-        - name: GIT_SYNC_SERVER
-          value: {{ .Values.creds.gitServer }}
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
