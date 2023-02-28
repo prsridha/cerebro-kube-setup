@@ -47,6 +47,7 @@ cluster:
   networking:
     nodeLocalListenIP: 169.254.0.0
     prometheusNodePort: 30090
+    grafanaNodePort: 30030
     lokiPort: 3100
     publicDNSName: ec2-35-183-8-210.ca-central-1.compute.amazonaws.com
 workerETL:
