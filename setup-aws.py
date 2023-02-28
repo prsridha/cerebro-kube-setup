@@ -407,6 +407,7 @@ class CerebroInstaller:
         ns = "prom-metrics"
         body = v1.read_namespaced_service(namespace=ns, name=name)
         body.spec.type = "NodePort"
+        body.spec.ports[0].node_port = self.values_yaml["cluster"]["networking"]["grafanaNodePort"]
         v1.patch_namespaced_service(name, ns, body)
 
         svc = v1.read_namespaced_service(namespace=ns, name=name)
@@ -605,7 +606,18 @@ class CerebroInstaller:
         out = run(cmd2.format(controller_sg_id, tensorboardNodePort, haltException=False))
         out = run(cmd2.format(controller_sg_id, webappNodePort, haltException=False))
         out = run(cmd2.format(controller_sg_id, backendNodePort, haltException=False))
-   
+    
+    def webAppInitialize(self):
+        # initialize webapp by sending values.yaml file
+        files = {'file': open('values.yaml','rb')}
+        host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
+        port = str(self.values_yaml["webApp"]["backendNodePort"])
+        url = "http://" + host + ":" + port + "/initialize"
+        r = requests.post(url, files=files)
+        pprint(r.content)
+
+        print("Done")
+
     def createController(self):
         # load fabric connections
         self.initializeFabric()
@@ -726,6 +738,8 @@ class CerebroInstaller:
         while not checkPodStatus(label):
             time.sleep(1)
         
+        webAppInitialize()
+
         print("Done")
 
     def cleanUp(self):
@@ -903,30 +917,7 @@ class CerebroInstaller:
 
     def testing(self):
         pass
-
-    
-    # WILL BE DONE THROUGH UI
-    def webAppInitialize(self):
-        # initialize webapp by sending values.yaml file
-        files = {'file': open('values.yaml','rb')}
-        host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
-        port = str(self.values_yaml["webApp"]["backendNodePort"])
-        url = "http://" + host + ":" + port + "/initialize"
-        r = requests.post(url, files=files)
-        pprint(r.content)
-
-        print("Done")
         
-    def webAppSaveCode(self):
-        # initialize webapp by sending values.yaml file    
-        files = {'file': open('coco-mop.zip','rb')}
-        host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
-        port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
-        url = "http://" + host + ":" + port + "/save-code"
-        r = requests.post(url, files=files)
-        pprint(r.content)
-        print("Done")
-    
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
