@@ -13,22 +13,16 @@ controller:
     cerebroRepoMountPath: /cerebro-repo
     userRepoHostPath: /home/ec2-user/user-repo
     userRepoMountPath: /user-repo
-    webappHostPath: /home/ec2-user/web-app
-    webappMountPath: /webapp
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
     cerebroRepoBranch: demo
     gitSyncImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/git-sync:latest
     image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   services:
-    webappPort: 8080
-    webappUIPort: 80
     jupyterPort: 8888
     jupyterNodePort: 30888
     tensorboardPort: 6006
     tensorboardNodePort: 30999
-    webappNodePort: 30083
-    webappUINodePort: 30080
 creds:
   gitServer: github.com
   gitToken: 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
@@ -57,7 +51,7 @@ cluster:
     publicDNSName: ec2-99-79-72-169.ca-central-1.compute.amazonaws.com
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
-  coresPercent: 65
+  coresPercent: 50
   rpcPort: 7777
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
@@ -67,3 +61,11 @@ workerMOP:
   rpcPort: 7777
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
+webApp:
+  hostPath: /home/ec2-user/web-app
+  mountPath: /webapp
+  backendPort: 8080
+  uiPort: 80
+  uiNodePort: 30080
+  repoURL: https://github.com/prsridha/cerebro-ui.git
+  image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-ui:latest

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-webapp-service
+  name: webbackendsvc
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-webapp-svc
@@ -12,15 +12,13 @@ spec:
     app: cerebro-webapp
   ports:
   - protocol: "TCP"
-    port: {{ .Values.controller.services.webappPort }}
-    targetPort: {{ .Values.controller.services.webappPort }}
-    nodePort: {{ .Values.controller.services.webappNodePort }}
-  type: NodePort
+    port: {{ .Values.webApp.backendPort }}
+    targetPort: {{ .Values.webApp.backendPort }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-webapp-ui
+  name: webuisvc
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-webapp-ui
@@ -29,7 +27,7 @@ spec:
   selector:
     app: cerebro-webapp
   ports:
-    - port: {{ .Values.controller.services.webappUIPort }}
-      targetPort: {{ .Values.controller.services.webappUIPort }}
-      nodePort: {{ .Values.controller.services.webappUINodePort}}
+    - port: {{ .Values.webApp.uiPort }}
+      targetPort: {{ .Values.webApp.uiPort }}
+      nodePort: {{ .Values.webApp.uiNodePort }}
   type: NodePort
