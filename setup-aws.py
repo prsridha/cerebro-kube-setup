@@ -811,7 +811,7 @@ class CerebroInstaller:
         print("Deleted cerebro-repo and user-repo")
         
         # clean up webapp
-        self.conn.sudo("rm -rf /home/ec2-user/web-app")
+        self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
         run("helm delete webapp")
         
         pods_list = v1.list_namespaced_pod("cerebro")
