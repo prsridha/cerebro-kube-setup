@@ -738,7 +738,8 @@ class CerebroInstaller:
         while not checkPodStatus(label):
             time.sleep(1)
         
-        webAppInitialize()
+        time.sleep(2)
+        self.webAppInitialize()
 
         print("Done")
 
