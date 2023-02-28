@@ -582,7 +582,7 @@ class CerebroInstaller:
         # add ingress rule for JupyterNotebook, Tensorboard and WebServer ports on security group
         jupyterNodePort = self.values_yaml["controller"]["services"]["jupyterNodePort"]
         tensorboardNodePort = self.values_yaml["controller"]["services"]["tensorboardNodePort"]
-        webappNodePort = self.values_yaml["controller"]["services"]["webappNodePort"]
+        webappNodePort = self.values_yaml["webApp"]["uiNodePort"]
 
         cluster_name = self.values_yaml["cluster"]["name"]
         
