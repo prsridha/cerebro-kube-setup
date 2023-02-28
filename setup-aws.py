@@ -604,7 +604,7 @@ class CerebroInstaller:
         
         out = run(cmd2.format(controller_sg_id, jupyterNodePort, haltException=False))
         out = run(cmd2.format(controller_sg_id, tensorboardNodePort, haltException=False))
-        out = run(cmd2.format(controller_sg_id, webappNodePort, haltException=False))
+        out = run(cmd2.format(controller_sg_id, uiNodePort, haltException=False))
         out = run(cmd2.format(controller_sg_id, backendNodePort, haltException=False))
     
     def webAppInitialize(self):
@@ -932,11 +932,7 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
 
     def testing(self):
-        # load fabric connections
-        self.initializeFabric()
-        
-        self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
-        run("helm delete webapp")
+        pass
         
     # call the below functions from CLI
     def createCluster(self):
