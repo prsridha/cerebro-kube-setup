@@ -70,6 +70,8 @@ spec:
         ports:
         - containerPort: {{ .Values.webApp.backendPort }}
           name: backend-port
+        - containerPort: {{ .Values.webApp.backendNodePort }}
+          name: b-nodeport
       - name: cerebro-ui-container
         image: {{ .Values.webApp.image }}
         imagePullPolicy: Always
@@ -78,6 +80,8 @@ spec:
         env:
         - name: POD_TYPE
           value: "webapp_ui"
+        - name: BACKEND_HOST
+          value: {{ .Values.cluster.networking.publicDNSName }}
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
