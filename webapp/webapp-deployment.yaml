@@ -96,7 +96,7 @@ spec:
       volumes:
       - name: webapp-data
         hostPath:
-          path: {{ .Values.webApp.mountPath }}
+          path: {{ .Values.webApp.hostPath }}
           type: Directory
       - name: cerebro-hardware-info
         configMap:
