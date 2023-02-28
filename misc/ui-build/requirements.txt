@@ -1,0 +1,4 @@
+Flask
+oyaml
+Flask-Cors
+kubernetes
