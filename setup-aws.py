@@ -582,8 +582,9 @@ class CerebroInstaller:
         # add ingress rule for JupyterNotebook, Tensorboard and WebServer ports on security group
         jupyterNodePort = self.values_yaml["controller"]["services"]["jupyterNodePort"]
         tensorboardNodePort = self.values_yaml["controller"]["services"]["tensorboardNodePort"]
-        webappNodePort = self.values_yaml["webApp"]["uiNodePort"]
-
+        uiNodePort = self.values_yaml["webApp"]["uiNodePort"]
+        backendNodePort = self.values_yaml["webApp"]["backendNodePort"]
+        
         cluster_name = self.values_yaml["cluster"]["name"]
         
         cmd1 = "aws ec2 describe-security-groups"
@@ -603,6 +604,7 @@ class CerebroInstaller:
         out = run(cmd2.format(controller_sg_id, jupyterNodePort, haltException=False))
         out = run(cmd2.format(controller_sg_id, tensorboardNodePort, haltException=False))
         out = run(cmd2.format(controller_sg_id, webappNodePort, haltException=False))
+        out = run(cmd2.format(controller_sg_id, backendNodePort, haltException=False))
    
     def createController(self):
         # load fabric connections
@@ -901,13 +903,14 @@ class CerebroInstaller:
 
     def testing(self):
         pass
+
     
     # WILL BE DONE THROUGH UI
     def webAppInitialize(self):
         # initialize webapp by sending values.yaml file
         files = {'file': open('values.yaml','rb')}
         host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
-        port = str(self.values_yaml["controller"]["services"]["webappNodePort"])
+        port = str(self.values_yaml["webApp"]["backendNodePort"])
         url = "http://" + host + ":" + port + "/initialize"
         r = requests.post(url, files=files)
         pprint(r.content)
