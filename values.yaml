@@ -29,7 +29,7 @@ creds:
   jupyterTokenSting: projectcerebro
 namespace: cerebro
 cluster:
-  name: cerebro-kube-small-1
+  name: cerebro-kube-small-2
   workerSpotInstance: false
   numWorkers: 3
   region: ca-central-1
@@ -38,17 +38,17 @@ cluster:
   - g4dn.12xlarge
   volumeSize: 200
   efsFileSystemIds:
-    checkpointFsId: fs-05f3ed8a95c906f7d
-    dataFsId: fs-084f9df8475019286
-    metricsFsId: fs-06b39cec72a45a4eb
-    configFsId: fs-0617e40a249ff4096
+    checkpointFsId: fs-0fec20e4d8f7dfc09
+    dataFsId: fs-0c24f239bb8341861
+    metricsFsId: fs-083b42dfb788a63ce
+    configFsId: fs-0ff97978f494e4969
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   networking:
     nodeLocalListenIP: 169.254.0.0
     prometheusNodePort: 30090
     lokiPort: 3100
-    publicDNSName: ec2-99-79-72-169.ca-central-1.compute.amazonaws.com
+    publicDNSName: ec2-35-183-8-210.ca-central-1.compute.amazonaws.com
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
   coresPercent: 50
@@ -64,8 +64,9 @@ workerMOP:
 webApp:
   hostPath: /home/ec2-user/web-app
   mountPath: /webapp
-  backendPort: 8080
+  backendPort: 8083
+  backendNodePort: 30083
   uiPort: 80
   uiNodePort: 30080
-  repoURL: https://github.com/prsridha/cerebro-ui.git
+  repoURL: git@github.com:prsridha/cerebro-ui.git
   image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-ui:latest
