@@ -618,8 +618,8 @@ class CerebroInstaller:
                 r = requests.get(url)
                 print(r.json())
                 count = -1
-            except:
-                print("Waiting for webapp to go live...")
+            except Exception as e:
+                print("Waiting for webapp to go live...", str(e))
                 count += 1
                 time.sleep(2)
         
@@ -932,7 +932,11 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
 
     def testing(self):
-        pass
+        # load fabric connections
+        self.initializeFabric()
+        
+        self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
+        run("helm delete webapp")
         
     # call the below functions from CLI
     def createCluster(self):
