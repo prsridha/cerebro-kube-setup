@@ -700,7 +700,7 @@ class CerebroInstaller:
         self.initializeFabric()
         
         # create mount dir on host
-        self.conn.run("mkdir -p {}".format(self.values_yaml["controller"]["volumes"]["webappHostPath"]))
+        self.conn.run("mkdir -p {}".format(self.values_yaml["webApp"]["hostPath"]))
         
         cmds = [
         "mkdir -p charts",
