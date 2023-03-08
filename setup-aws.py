@@ -338,21 +338,12 @@ class CerebroInstaller:
         # load fabric connections
         self.initializeFabric()
         
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        
-        dir = "init_cluster/metrics_monitor"
-        Path(dir).mkdir(parents=True, exist_ok=True)
-        
-        node = "node0"
         prometheus_port = self.values_yaml["cluster"]["networking"]["prometheusNodePort"]
-        
-        # pull Prometheus values file
-        prom_path = "init_cluster/kube-prometheus-stack.values"
-        
+
         cmds = [
             "kubectl create namespace prom-metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
+            "helm repo add stable https://charts.helm.sh/stable",
             "helm repo update"
         ]
 
@@ -361,10 +352,11 @@ class CerebroInstaller:
             print(out)
         
         cmd1 = """
-        helm install prom prometheus-community/kube-prometheus-stack \
-        --namespace prom-metrics """
-        # --values {}
-        # .format(prom_path)
+        helm install prometheus prometheus-community/kube-prometheus-stack \
+        --namespace prom-metrics \
+        --set prometheus.service.nodePort={} \
+        --set prometheus.service.type=NodePort \
+        --version 45.4.0""".format(prometheus_port)
         
         cmd2 = "helm repo add grafana https://grafana.github.io/helm-charts"
         cmd3 = "helm upgrade --install loki grafana/loki-stack -n prom-metrics"
@@ -373,45 +365,13 @@ class CerebroInstaller:
         run(cmd1, capture_output=False)
         run(cmd2, capture_output=False)
         run(cmd3, capture_output=False)
-        
-        # install DCGM exporter
-        dcgm_path = "init_cluster/metrics_monitor/dcgm"
-        run("rm -rf {}".format(dcgm_path))
-        Path(dcgm_path).mkdir(parents=True, exist_ok=True)
-        Repo.clone_from("https://github.com/NVIDIA/gpu-monitoring-tools.git", dcgm_path)
-        
-        # modification to the repo
-        path1 = os.path.join(dcgm_path, "etc/dcgm-exporter/default-counters.csv")
-        path2 = os.path.join(dcgm_path, "etc/dcgm-exporter/dcp-metrics-included.csv")
-        path3 = os.path.join(dcgm_path, "deployment/dcgm-exporter/templates/daemonset.yaml")
-        
-        with open(path1, "r") as f1, open(path2, "r") as f2, open(path3, "r") as f3:
-            path1_s = f1.read()
-            path2_s = f2.read()
-            path3_s = f3.read()
-            
-            path1_s = path1_s.replace("# DCGM_FI_DEV_GPU_UTIL", "DCGM_FI_DEV_GPU_UTIL")
-            path2_s = path2_s.replace("# DCGM_FI_DEV_GPU_UTIL", "DCGM_FI_DEV_GPU_UTIL")
-            path3_s = path3_s.replace("initialDelaySeconds: 5", "initialDelaySeconds: 30")
-        
-        with open(path1, "w") as f1, open(path2, "w") as f2, open(path3, "w") as f3:
-            f1.write(path1_s)
-            f2.write(path2_s)
-            f3.write(path3_s)
-        
-        print("Installing DCGM Exporter...")
-        cmd2 = "(cd {}/deployment ; helm install --generate-name --namespace prom-metrics dcgm-exporter)".format(dcgm_path)
-        run(cmd2, capture_output=False)
 
-        name = "prom-grafana"
+        name = "prometheus-grafana"
         ns = "prom-metrics"
         body = v1.read_namespaced_service(namespace=ns, name=name)
         body.spec.type = "NodePort"
-        body.spec.ports[0].node_port = self.values_yaml["cluster"]["networking"]["grafanaNodePort"]
+        body.spec.ports[0].node_port = grafana_port
         v1.patch_namespaced_service(name, ns, body)
-
-        svc = v1.read_namespaced_service(namespace=ns, name=name)
-        port = svc.spec.ports[0].node_port
         
         # add ingress rule for ports on security group
         cluster_name = self.values_yaml["cluster"]["name"]
@@ -429,23 +389,11 @@ class CerebroInstaller:
         --cidr 0.0.0.0/0
         """
         
-        out = run(cmd2.format(controller_sg_id, port))
         out = run(cmd2.format(controller_sg_id, prometheus_port), haltException=False)
+        out = run(cmd2.format(controller_sg_id, grafana_port), haltException=False)
 
         print("Added Ingress rules in Controller SecurityGroup for Grafana and Prometheus ports")
-        
-        cmd3 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
-        instances = json.loads(run(cmd3))
-        for i in instances["Reservations"]:
-            tags = i["Instances"][0]["Tags"]
-            if "controller" in str(tags):
-                public_dns_name = i["Instances"][0]["PublicDnsName"]
-                break
-        print(public_dns_name)
-        
-        self.values_yaml["cluster"]["networking"]["publicDNSName"] = public_dns_name
-        with open("values.yaml", "w") as f:
-            yaml.safe_dump(self.values_yaml, f)
+        print("Setup of Metrics Monitoring Complete.")
 
     def patchNodes(self):
         # load fabric connections
@@ -479,6 +427,19 @@ class CerebroInstaller:
         self.conn.run("mkdir -p {}/user-repo".format(home))
         self.s.run("mkdir -p {}/user-repo".format(home))
         self.s.run("mkdir -p {}/cerebro-repo".format(home))
+
+        cmd3 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
+        instances = json.loads(run(cmd3))
+        for i in instances["Reservations"]:
+            tags = i["Instances"][0]["Tags"]
+            if "controller" in str(tags):
+                public_dns_name = i["Instances"][0]["PublicDnsName"]
+                break
+        print(public_dns_name)
+        
+        self.values_yaml["cluster"]["networking"]["publicDNSName"] = public_dns_name
+        with open("values.yaml", "w") as f:
+            yaml.safe_dump(self.values_yaml, f)
         
         print("Created directories for cerebro repos")
     
@@ -977,6 +938,16 @@ class CerebroInstaller:
         # initialize basic cerebro components
         self.initCerebro()
 
+        # creates Controller
+        self.createController()
+
+        # create webapp
+        self.createWebApp()
+
+        # create Workers
+        self.createWorkers()
+
+    def installCerebro(self):
         # creates Controller
         self.createController()
 
