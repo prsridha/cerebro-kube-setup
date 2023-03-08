@@ -338,12 +338,15 @@ class CerebroInstaller:
         # load fabric connections
         self.initializeFabric()
         
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        
         prometheus_port = self.values_yaml["cluster"]["networking"]["prometheusNodePort"]
+        grafana_port = self.values_yaml["cluster"]["networking"]["grafanaNodePort"]
 
         cmds = [
             "kubectl create namespace prom-metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
-            "helm repo add stable https://charts.helm.sh/stable",
             "helm repo update"
         ]
 
@@ -354,9 +357,10 @@ class CerebroInstaller:
         cmd1 = """
         helm install prometheus prometheus-community/kube-prometheus-stack \
         --namespace prom-metrics \
+        --values init_cluster/kube-prometheus-stack.values \
         --set prometheus.service.nodePort={} \
         --set prometheus.service.type=NodePort \
-        --version 45.4.0""".format(prometheus_port)
+        --version 45.6.0""".format(prometheus_port)
         
         cmd2 = "helm repo add grafana https://grafana.github.io/helm-charts"
         cmd3 = "helm upgrade --install loki grafana/loki-stack -n prom-metrics"
@@ -366,12 +370,31 @@ class CerebroInstaller:
         run(cmd2, capture_output=False)
         run(cmd3, capture_output=False)
 
+        time.sleep(5)
+
         name = "prometheus-grafana"
         ns = "prom-metrics"
         body = v1.read_namespaced_service(namespace=ns, name=name)
         body.spec.type = "NodePort"
         body.spec.ports[0].node_port = grafana_port
         v1.patch_namespaced_service(name, ns, body)
+
+        # install Nvidia DCGM-Exporter
+        cmds = [
+            "helm repo add gpu-dcgm https://nvidia.github.io/dcgm-exporter/helm-charts",
+            "helm install dcgm-exporter gpu-dcgm/dcgm-exporter --namespace prom-metrics"
+        ]
+        for cmd in cmds:
+            out = run(cmd)
+            print(out)
+        
+        # increase DCGM DeamonSet LivenessProbe timeout
+        cmd1 = """
+            kubectl patch ds -n prom-metrics  dcgm-exporter -p \
+            '{"spec":{"template":{"spec":{"containers":[{"name":"exporter", "livenessProbe":{"failureThreshold": 7}}]}}}}'
+        """
+        run(cmd1, capture_output=False)
+        print("Installed Nvidia DCGM-Exporter")
         
         # add ingress rule for ports on security group
         cluster_name = self.values_yaml["cluster"]["name"]
