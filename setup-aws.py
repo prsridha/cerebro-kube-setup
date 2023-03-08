@@ -431,7 +431,7 @@ class CerebroInstaller:
         """
         run(cmd)
         print("Changed Grafana credentials")
-        
+
         print("Setup of Metrics Monitoring Complete.")
 
     def patchNodes(self):
@@ -490,6 +490,7 @@ class CerebroInstaller:
         v1 = client.CoreV1Api()
         
         # patch nodes with cerebro/nodename label
+        time.sleep(5)
         self.patchNodes()
         
         # create namespace, set context and setup kube-config
