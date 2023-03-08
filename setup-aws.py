@@ -337,7 +337,7 @@ class CerebroInstaller:
     def installMetricsMonitor(self):
         # load fabric connections
         self.initializeFabric()
-        
+
         config.load_kube_config()
         v1 = client.CoreV1Api()
         
@@ -395,6 +395,13 @@ class CerebroInstaller:
         """
         run(cmd1, capture_output=False)
         print("Installed Nvidia DCGM-Exporter")
+
+        # add Cerebro Dashboard to Grafana
+        cmd1 = "kubectl create configmap -n prom-metrics cerebro-dashboard --from-file='./misc/cerebro_dashboard.json'"
+        cmd2 = "kubectl label configmap -n prom-metrics cerebro-dashboard grafana_dashboard=1"
+        run(cmd1)
+        run(cmd2)
+        print("Created Cerebro Dashboard in Grafana")
         
         # add ingress rule for ports on security group
         cluster_name = self.values_yaml["cluster"]["name"]
@@ -416,6 +423,15 @@ class CerebroInstaller:
         out = run(cmd2.format(controller_sg_id, grafana_port), haltException=False)
 
         print("Added Ingress rules in Controller SecurityGroup for Grafana and Prometheus ports")
+
+        cmd = """
+        kubectl exec --namespace prom-metrics -c grafana -it \
+        $(kubectl get pods --namespace prom-metrics -l "app.kubernetes.io/name=grafana" -o jsonpath="{.items[0].metadata.name}") -- \
+        grafana-cli admin reset-admin-password cerebro
+        """
+        run(cmd)
+        print("Changed Grafana credentials")
+        
         print("Setup of Metrics Monitoring Complete.")
 
     def patchNodes(self):
