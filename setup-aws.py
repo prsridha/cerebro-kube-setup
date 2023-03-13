@@ -1003,5 +1003,10 @@ class CerebroInstaller:
         # create Workers
         self.createWorkers()
 
+        url = self.values_yaml["cluster"]["networking"]["publicDNSName"]
+        port = self.values_yaml["webapp"]["uiNodePort"]
+        print("You can access the cluster using this URL:")
+        print("http://{}:{}".format(url, port))
+
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
