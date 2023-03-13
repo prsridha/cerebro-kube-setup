@@ -60,6 +60,8 @@ spec:
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
+        - name: aws-config
+          mountPath: /root/.aws
         - name: git-secret
           mountPath: /etc/git-secret
         - name: webapp-data
@@ -85,8 +87,6 @@ spec:
         volumeMounts:
         - name: kube-config
           mountPath: /root/.kube
-        - name: aws-config
-          mountPath: /root/.aws
         - name: git-secret
           mountPath: /etc/git-secret
         - name: webapp-data
