@@ -616,7 +616,7 @@ class CerebroInstaller:
         url = "http://" + host + ":" + port + "/health"
 
         count = 0
-        while 0 <= count < 3:
+        while 0 <= count < 5:
             try:
                 r = requests.get(url)
                 print(r.json())
@@ -935,7 +935,11 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
 
     def testing(self):
-        pass
+        # load fabric connections
+        self.initializeFabric()
+
+        self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
+        run("helm delete webapp")
         
     # call the below functions from CLI
     def createCluster(self):
