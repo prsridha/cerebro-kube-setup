@@ -624,7 +624,7 @@ class CerebroInstaller:
             except Exception as e:
                 print("Waiting for webapp to go live...", str(e))
                 count += 1
-                time.sleep(2)
+                time.sleep(4)
         
         if count != -1:
             raise Exception("Webapp didn't go live. FAILED.")
