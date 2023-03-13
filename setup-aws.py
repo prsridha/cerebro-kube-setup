@@ -500,6 +500,8 @@ class CerebroInstaller:
                 self.kube_namespace),
             "kubectl create -n {} secret generic kube-config --from-file={}".format(
                 self.kube_namespace, os.path.expanduser("~/.kube/config")),
+            "kubectl create -n {} secret generic aws-config --from-file={}".format(
+                self.kube_namespace, os.path.expanduser("~/.aws/credentials")),
             "kubectl create -f init_cluster/rbac_roles.yaml"
         ]
     
