@@ -670,6 +670,13 @@ class CerebroInstaller:
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
 
+        # copy values.yaml
+        cmd = "kubectl cp values.yaml --namespace=cerebro cerebro-controller:{}".format(
+            self.values_yaml["controller"]["volumes"]["dataMountPath"]
+        )
+        run(cmd)
+        print("Copied values yaml to Controller")
+
         print("Done")
 
     def createWorkers(self):
