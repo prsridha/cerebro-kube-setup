@@ -814,9 +814,12 @@ class CerebroInstaller:
         print("Deleted cerebro-repo and user-repo")
         
         # clean up webapp
-        self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
-        run("helm delete webapp")
-        
+        try:
+            self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
+            run("helm delete webapp")
+        except Exception as e:
+            print("Got error: " + str(e))
+    
         pods_list = v1.list_namespaced_pod("cerebro")
         while pods_list.items != []:
             time.sleep(1)
