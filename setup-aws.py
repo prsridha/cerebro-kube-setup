@@ -670,13 +670,6 @@ class CerebroInstaller:
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
 
-        # copy values.yaml
-        cmd = "kubectl cp values.yaml --namespace=cerebro cerebro-controller:{}".format(
-            self.values_yaml["controller"]["volumes"]["dataMountPath"]
-        )
-        run(cmd)
-        print("Copied values yaml to Controller")
-
         print("Done")
 
     def createWorkers(self):
@@ -942,12 +935,8 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
 
     def testing(self):
-        # load fabric connections
-        self.initializeFabric()
+        pass
 
-        self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
-        run("helm delete webapp")
-        
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
