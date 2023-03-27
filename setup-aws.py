@@ -983,14 +983,8 @@ class CerebroInstaller:
         # initialize basic cerebro components
         self.initCerebro()
 
-        # creates Controller
-        self.createController()
-
-        # create webapp
-        self.createWebApp()
-
-        # create Workers
-        self.createWorkers()
+        # install Cerebro
+        self.installCerebro()
 
     def installCerebro(self):
         # creates Controller
