@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: cerebro
+  name: copy-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/exec", "pods/log", "pods/portforward", "pods/proxy", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: copy-rolebinding
+  namespace: cerebro
+subjects:
+- kind: Group
+  name: system:nodes
+roleRef:
+  kind: Role
+  name: copy-role
+  apiGroup: rbac.authorization.k8s.io

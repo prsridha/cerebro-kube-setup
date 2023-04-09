@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-service-worker-mop-{{ .Values.workerID }}
+  name: workermopsvc{{ .Values.workerID }}
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-worker-mop
@@ -12,6 +12,6 @@ spec:
   ports:
   - name: "rpc-port"
     protocol: "TCP"
-    port: {{ .Values.workerMOP.rcpport }}
-    targetPort: {{ .Values.workerMOP.rcpport }}
+    port: {{ .Values.workerMOP.rpcPort }}
+    targetPort: {{ .Values.workerMOP.rpcPort }}
   type: ClusterIP

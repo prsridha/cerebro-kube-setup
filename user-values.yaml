@@ -1,0 +1,8 @@
+clusterName: cerebro-kube-small-1
+clusterRegion: ca-central-1
+workerSpotInstance: false
+numWorkers: 3
+controllerInstance: t3.2xlarge
+workerInstances:
+- g4dn.12xlarge
+coresPercent: 50

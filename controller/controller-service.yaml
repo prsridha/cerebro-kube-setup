@@ -1,25 +1,7 @@
-# Controller Service 
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-service
-  namespace: {{ .Release.Namespace }}
-  labels:
-    type: cerebro-controller-svc
-    serviceApp: dask
-spec:
-  selector:
-    app: cerebro-controller
-  ports:
-  - protocol: "TCP"
-    port: {{ .Values.controller.services.daskPort }}
-    targetPort: {{ .Values.controller.services.daskPort }}
-  type: NodePort
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: cerebro-controller-port-forward-jupyter
+  name: jupyternotebooksvc
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
@@ -30,12 +12,13 @@ spec:
   ports:
     - port: {{ .Values.controller.services.jupyterPort }}
       targetPort: {{ .Values.controller.services.jupyterPort }}
+      nodePort: {{ .Values.controller.services.jupyterNodePort }}
   type: NodePort
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: cerebro-controller-port-forward-tnsrbrd
+  name: tensorboardsvc
   namespace: {{ .Release.Namespace }}
   labels:
     type: cerebro-controller-svc
@@ -46,20 +29,5 @@ spec:
   ports:
     - port: {{ .Values.controller.services.tensorboardPort }}
       targetPort: {{ .Values.controller.services.tensorboardPort }}
-  type: NodePort
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: cerebro-controller-port-forward-dask
-  namespace: {{ .Release.Namespace }}
-  labels:
-    type: cerebro-controller-svc
-    serviceApp: dask
-spec:
-  selector:
-    app: cerebro-controller
-  ports:
-    - port: {{ .Values.controller.services.daskDashboardPort }}
-      targetPort: {{ .Values.controller.services.daskDashboardPort }}
+      nodePort: {{ .Values.controller.services.tensorboardNodePort }}
   type: NodePort

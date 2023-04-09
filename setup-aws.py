@@ -2,8 +2,7 @@ import os
 import json
 import time
 import fire
-import psutil
-import webbrowser
+import requests
 import subprocess
 from git import Repo
 import oyaml as yaml
@@ -43,7 +42,7 @@ def run(cmd, shell=True, capture_output=True, text=True, haltException=True):
         print(str(e))
         raise Exception
 
-def checkPodStatus(label, namespace):
+def checkPodStatus(label, namespace="cerebro"):
     from kubernetes import client, config
 
     config.load_kube_config()
@@ -64,7 +63,7 @@ def checkPodStatus(label, namespace):
             return False
     return True
 
-def getPodNames(namespace):
+def getPodNames(namespace="cerebro"):
     label = "app=cerebro-controller"
     config.load_kube_config()
     v1 = client.CoreV1Api()
@@ -97,11 +96,30 @@ class CerebroInstaller:
         self.values_yaml = None
         self.kube_namespace = "cerebro"
         
+        self.copyUserYAML()
         with open('values.yaml', 'r') as yamlfile:
             self.values_yaml = yaml.safe_load(yamlfile)
             
-        self.num_workers = self.values_yaml["cluster"]["workers"]
+        self.num_workers = self.values_yaml["cluster"]["numWorkers"]
         
+    def copyUserYAML(self):
+        with open('user-values.yaml', 'r') as yamlfile:
+            user_yaml = yaml.safe_load(yamlfile)
+        
+        with open('values.yaml', 'r') as yamlfile:
+            values_yaml = yaml.safe_load(yamlfile)
+            
+        values_yaml["cluster"]["name"] = user_yaml["clusterName"]
+        values_yaml["cluster"]["region"] = user_yaml["clusterRegion"]
+        values_yaml["cluster"]["workerSpotInstance"] = user_yaml["workerSpotInstance"]
+        values_yaml["cluster"]["numWorkers"] = user_yaml["numWorkers"]
+        values_yaml["cluster"]["controllerInstance"] = user_yaml["controllerInstance"]
+        values_yaml["cluster"]["workerInstances"] = user_yaml["workerInstances"]
+        values_yaml["workerETL"]["coresPercent"] = user_yaml["coresPercent"]
+            
+        with open("values.yaml", "w") as f:
+            yaml.safe_dump(values_yaml, f)
+
     def initializeFabric(self):
         # get controller and worker addresses
         host = None
@@ -319,19 +337,13 @@ class CerebroInstaller:
     def installMetricsMonitor(self):
         # load fabric connections
         self.initializeFabric()
-        
+
         config.load_kube_config()
         v1 = client.CoreV1Api()
         
-        dir = "init_cluster/metrics_monitor"
-        Path(dir).mkdir(parents=True, exist_ok=True)
-        
-        node = "node0"
-        prometheus_port = 30090
-        
-        # pull Prometheus values file
-        prom_path = "init_cluster/kube-prometheus-stack.values"
-        
+        prometheus_port = self.values_yaml["cluster"]["networking"]["prometheusNodePort"]
+        grafana_port = self.values_yaml["cluster"]["networking"]["grafanaNodePort"]
+
         cmds = [
             "kubectl create namespace prom-metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
@@ -343,10 +355,12 @@ class CerebroInstaller:
             print(out)
         
         cmd1 = """
-        helm install prom prometheus-community/kube-prometheus-stack \
+        helm install prometheus prometheus-community/kube-prometheus-stack \
         --namespace prom-metrics \
-        --values {}
-        """.format(prom_path)
+        --values init_cluster/kube-prometheus-stack.values \
+        --set prometheus.service.nodePort={} \
+        --set prometheus.service.type=NodePort \
+        --version 45.6.0""".format(prometheus_port)
         
         cmd2 = "helm repo add grafana https://grafana.github.io/helm-charts"
         cmd3 = "helm upgrade --install loki grafana/loki-stack -n prom-metrics"
@@ -355,43 +369,39 @@ class CerebroInstaller:
         run(cmd1, capture_output=False)
         run(cmd2, capture_output=False)
         run(cmd3, capture_output=False)
-        
-        # install DCGM exporter
-        dcgm_path = "init_cluster/metrics_monitor/dcgm"
-        Path(dcgm_path).mkdir(parents=True, exist_ok=True)
-        Repo.clone_from("https://github.com/NVIDIA/gpu-monitoring-tools.git", dcgm_path)
-        
-        # modification to the repo
-        path1 = os.path.join(dcgm_path, "etc/dcgm-exporter/default-counters.csv")
-        path2 = os.path.join(dcgm_path, "etc/dcgm-exporter/dcp-metrics-included.csv")
-        path3 = os.path.join(dcgm_path, "deployment/dcgm-exporter/templates/daemonset.yaml")
-        
-        with open(path1, "r") as f1, open(path2, "r") as f2, open(path3, "r") as f3:
-            path1_s = f1.read()
-            path2_s = f2.read()
-            path3_s = f3.read()
-            
-            path1_s = path1_s.replace("# DCGM_FI_DEV_GPU_UTIL", "DCGM_FI_DEV_GPU_UTIL")
-            path2_s = path2_s.replace("# DCGM_FI_DEV_GPU_UTIL", "DCGM_FI_DEV_GPU_UTIL")
-            path3_s = path3_s.replace("initialDelaySeconds: 5", "initialDelaySeconds: 30")
-        
-        with open(path1, "w") as f1, open(path2, "w") as f2, open(path3, "w") as f3:
-            f1.write(path1_s)
-            f2.write(path2_s)
-            f3.write(path3_s)
-        
-        print("Installing DCGM Exporter...")
-        cmd2 = "(cd {}/deployment ; helm install --generate-name --namespace prom-metrics dcgm-exporter)".format(dcgm_path)
-        run(cmd2, capture_output=False)
 
-        name = "prom-grafana"
+        time.sleep(5)
+
+        name = "prometheus-grafana"
         ns = "prom-metrics"
         body = v1.read_namespaced_service(namespace=ns, name=name)
         body.spec.type = "NodePort"
+        body.spec.ports[0].node_port = grafana_port
         v1.patch_namespaced_service(name, ns, body)
 
-        svc = v1.read_namespaced_service(namespace=ns, name=name)
-        port = svc.spec.ports[0].node_port
+        # install Nvidia DCGM-Exporter
+        cmds = [
+            "helm repo add gpu-dcgm https://nvidia.github.io/dcgm-exporter/helm-charts",
+            "helm install dcgm-exporter gpu-dcgm/dcgm-exporter --namespace prom-metrics"
+        ]
+        for cmd in cmds:
+            out = run(cmd)
+            print(out)
+        
+        # increase DCGM DeamonSet LivenessProbe timeout
+        cmd1 = """
+            kubectl patch ds -n prom-metrics  dcgm-exporter -p \
+            '{"spec":{"template":{"spec":{"containers":[{"name":"exporter", "livenessProbe":{"failureThreshold": 7}}]}}}}'
+        """
+        run(cmd1, capture_output=False)
+        print("Installed Nvidia DCGM-Exporter")
+
+        # add Cerebro Dashboard to Grafana
+        cmd1 = "kubectl create configmap -n prom-metrics cerebro-dashboard --from-file='./misc/cerebro_dashboard.json'"
+        cmd2 = "kubectl label configmap -n prom-metrics cerebro-dashboard grafana_dashboard=1"
+        run(cmd1)
+        run(cmd2)
+        print("Created Cerebro Dashboard in Grafana")
         
         # add ingress rule for ports on security group
         cluster_name = self.values_yaml["cluster"]["name"]
@@ -409,47 +419,20 @@ class CerebroInstaller:
         --cidr 0.0.0.0/0
         """
         
-        out = run(cmd2.format(controller_sg_id, port))
         out = run(cmd2.format(controller_sg_id, prometheus_port), haltException=False)
+        out = run(cmd2.format(controller_sg_id, grafana_port), haltException=False)
 
         print("Added Ingress rules in Controller SecurityGroup for Grafana and Prometheus ports")
-        
-        cmd3 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
-        instances = json.loads(run(cmd3))
-        for i in instances["Reservations"]:
-            tags = i["Instances"][0]["Tags"]
-            if "controller" in str(tags):
-                public_dns_name = i["Instances"][0]["PublicDnsName"]
-                break
-        print(public_dns_name)
-        
-        print(
-            "Access Grafana with this link:\nhttp://{}:{}".format(public_dns_name, port))
-        print("username: {}\npassword: {}".format("admin", "prom-operator"))
-        print("Add Loki Datasource with this url: \nhttp://loki:3100")
-        
-        print(
-            "Access Prometheus with this link:\nhttp://{}:{}".format(public_dns_name, prometheus_port))
 
-        home = self.home
-        Path(home + "/reference").mkdir(parents=True, exist_ok=True)
-        with open(home + "/reference/metrics_monitor_credentials.txt", "w+") as f:
-            f.write(
-                "Access Grafana with this link:\nhttp://{}:{}\n".format(public_dns_name, port))
-            f.write("username: {}\npassword: {}\n".format(
-                "admin", "prom-operator"))
-            f.write(
-                "Add Loki Datasource with this url:\nhttp://loki:3100\n")
-            f.write(
-                "\nAccess Prometheus with this link:\nhttp://{}:{}\n".format(public_dns_name, prometheus_port))
-
-        # delete temporarily created files
-        cmd = "rm -rf {}".format(dir)
+        cmd = """
+        kubectl exec --namespace prom-metrics -c grafana -it \
+        $(kubectl get pods --namespace prom-metrics -l "app.kubernetes.io/name=grafana" -o jsonpath="{.items[0].metadata.name}") -- \
+        grafana-cli admin reset-admin-password cerebro
+        """
         run(cmd)
-        
-        # open Grafana URL
-        url = "http://{}:{}".format(public_dns_name, port)
-        webbrowser.open(url)
+        print("Changed Grafana credentials")
+
+        print("Setup of Metrics Monitoring Complete.")
 
     def patchNodes(self):
         # load fabric connections
@@ -483,6 +466,19 @@ class CerebroInstaller:
         self.conn.run("mkdir -p {}/user-repo".format(home))
         self.s.run("mkdir -p {}/user-repo".format(home))
         self.s.run("mkdir -p {}/cerebro-repo".format(home))
+
+        cmd3 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
+        instances = json.loads(run(cmd3))
+        for i in instances["Reservations"]:
+            tags = i["Instances"][0]["Tags"]
+            if "controller" in str(tags):
+                public_dns_name = i["Instances"][0]["PublicDnsName"]
+                break
+        print(public_dns_name)
+        
+        self.values_yaml["cluster"]["networking"]["publicDNSName"] = public_dns_name
+        with open("values.yaml", "w") as f:
+            yaml.safe_dump(self.values_yaml, f)
         
         print("Created directories for cerebro repos")
     
@@ -494,6 +490,7 @@ class CerebroInstaller:
         v1 = client.CoreV1Api()
         
         # patch nodes with cerebro/nodename label
+        time.sleep(5)
         self.patchNodes()
         
         # create namespace, set context and setup kube-config
@@ -503,19 +500,37 @@ class CerebroInstaller:
                 self.kube_namespace),
             "kubectl create -n {} secret generic kube-config --from-file={}".format(
                 self.kube_namespace, os.path.expanduser("~/.kube/config")),
+            "kubectl create -n {} secret generic aws-config --from-file={}".format(
+                self.kube_namespace, os.path.expanduser("~/.aws/credentials")),
+            "kubectl create -f init_cluster/rbac_roles.yaml"
         ]
     
         for cmd in cmds1:
             out = run(cmd)
             print(out)
         print("Created Cerebro namespace, set context and added kube-config secret")
-    
+        
+        # add EKS identity mapping for Role
+        cmd1 = "aws sts get-caller-identity"
+        cmd2 = """
+        eksctl create iamidentitymapping \
+            --cluster {} \
+            --region={} \
+            --arn arn:aws:iam::{}:role/copy-role \
+            --group system:nodes \
+            --no-duplicate-arns
+        """
+        account_id = json.loads(run(cmd1))["Account"]
+        cluster_name = self.values_yaml["cluster"]["name"]
+        cluster_region = self.values_yaml["cluster"]["region"]
+        run(cmd2.format(cluster_name, cluster_region, account_id))
+            
         # create kubernetes secret using ssh key and git server as known host
-        known_hosts_cmd = "ssh-keyscan {} > ./reference/known_hosts".format(self.values_yaml["creds"]["gitServer"])
+        known_hosts_cmd = "ssh-keyscan {} > ./init_cluster/known_hosts".format(self.values_yaml["creds"]["gitServer"])
         github_known_hosts = run(known_hosts_cmd, capture_output=False)
-        kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=./reference/known_hosts"
+        kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=./init_cluster/known_hosts"
         run(kube_git_secret.format(github_known_hosts))
-        rm_known_hosts = "rm ./reference/known_hosts"
+        rm_known_hosts = "rm ./init_cluster/known_hosts"
         run(rm_known_hosts)
         print("Created kubernetes secret for git")
 
@@ -523,7 +538,7 @@ class CerebroInstaller:
         cmd2 = "kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}"
         kubedns = run(cmd2)
         domain = "cluster.local"
-        localdns = self.values_yaml["cluster"]["nodeLocalListenIP"]
+        localdns = self.values_yaml["cluster"]["networking"]["nodeLocalListenIP"]
         
         with open("init_cluster/nodelocaldns_template.yaml", "r") as f:
             yml = f.read()
@@ -565,138 +580,63 @@ class CerebroInstaller:
         # create configmap
         cmd = "kubectl create -n {} configmap node-hardware-info --from-file=init_cluster/node_hardware_info.json".format(self.kube_namespace)
         run(cmd)
-        
         run("rm {}".format(path))
-        
         print("Created configmap for node hardware info")
+
+        # add ingress rule for JupyterNotebook, Tensorboard and WebServer ports on security group
+        jupyterNodePort = self.values_yaml["controller"]["services"]["jupyterNodePort"]
+        tensorboardNodePort = self.values_yaml["controller"]["services"]["tensorboardNodePort"]
+        uiNodePort = self.values_yaml["webApp"]["uiNodePort"]
+        backendNodePort = self.values_yaml["webApp"]["backendNodePort"]
+        
+        cluster_name = self.values_yaml["cluster"]["name"]
+        
+        cmd1 = "aws ec2 describe-security-groups"
+        out = json.loads(run(cmd1))
+        for sg in out["SecurityGroups"]:
+            if cluster_name in sg["GroupName"] and "controller" in sg["GroupName"]:
+                controller_sg_id = sg["GroupId"]
+        
+        
+        cmd2 = """aws ec2 authorize-security-group-ingress \
+        --group-id {} \
+        --protocol tcp \
+        --port {} \
+        --cidr 0.0.0.0/0
+        """
+        
+        out = run(cmd2.format(controller_sg_id, jupyterNodePort, haltException=False))
+        out = run(cmd2.format(controller_sg_id, tensorboardNodePort, haltException=False))
+        out = run(cmd2.format(controller_sg_id, uiNodePort, haltException=False))
+        out = run(cmd2.format(controller_sg_id, backendNodePort, haltException=False))
     
-    def addDaskMeta(self):
-        # write scheduler IP to yaml file
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        svc_name = "cerebro-controller-service"
-        svc = v1.read_namespaced_service(
-            namespace=self.kube_namespace, name=svc_name)
-        controller_ip = svc.spec.cluster_ip
+    def webAppInitialize(self):
+        host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
+        port = str(self.values_yaml["webApp"]["backendNodePort"])
+        url = "http://" + host + ":" + port + "/health"
 
-        self.values_yaml["workerETL"]["schedulerIP"] = controller_ip
+        count = 0
+        while 0 <= count < 5:
+            try:
+                r = requests.get(url)
+                print(r.json())
+                count = -1
+            except Exception as e:
+                print("Waiting for webapp to go live...", str(e))
+                count += 1
+                time.sleep(4)
         
-        with open('values.yaml', 'w') as yamlfile:
-            yaml.safe_dump(self.values_yaml, yamlfile)
+        if count != -1:
+            raise Exception("Webapp didn't go live. FAILED.")
 
-        print("cerebro-controller's IP: ", controller_ip)
-        
-        # add Dask Dashboard info to references
-        namespace = self.kube_namespace
-        label = "serviceApp=dask"
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        jupyter_svc = v1.list_namespaced_service(
-            namespace, label_selector=label, watch=False)
-        jupyter_svc = jupyter_svc.items[0]
-        node_port = jupyter_svc.spec.ports[0].node_port
-        
-        daskDashboardPort = self.values_yaml["controller"]["services"]["daskDashboardPort"]
+        # initialize webapp by sending values.yaml file
+        files = {'file': open('values.yaml','rb')}
+        url = "http://" + host + ":" + port + "/initialize"
+        r = requests.post(url, files=files)
+        pprint(r.content)
 
-        pem_path = self.values_yaml["cluster"]["pemPath"]
-        user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
-            self.controller, pem_path, daskDashboardPort, node_port)
-        s = "\nRun this command on your local machine to access the Dask Dashboard : \n{}\n".format(
-            user_pf_command) + "\n" + "http://localhost:{}".format(daskDashboardPort)
-        
-        print(s)
-        Path("reference").mkdir(parents=True, exist_ok=True)
-        with open("reference/dask_dashboard_command.txt", "w+") as f:
-            f.write(s)
-    
-    def addJupyterMeta(self):
-        users_port = self.values_yaml["controller"]["services"]["jupyterUserPort"]
+        print("Done")
 
-        controller = getPodNames(self.kube_namespace)["controller"]
-        
-        # delete existing jupyter tokens if any
-        jyp_del = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf JUPYTER_TOKEN'".format(controller)
-        run(jyp_del)
-        print("Deleting preexisting Jupyter Tokens")
-
-        jyp_check_cmd = "kubectl exec -t {} -c cerebro-controller-container -- ls".format(controller)
-        ls_out = run(jyp_check_cmd)
-        while "JUPYTER_TOKEN" not in ls_out:
-            time.sleep(1)
-            ls_out = run(jyp_check_cmd)
-
-        cmd = "kubectl exec -t {} -c cerebro-controller-container -- cat JUPYTER_TOKEN".format(controller)
-        jupyter_token = run(cmd)
-        
-        namespace = self.kube_namespace
-        label = "serviceApp=jupyter"
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        jupyter_svc = v1.list_namespaced_service(
-            namespace, label_selector=label, watch=False)
-        jupyter_svc = jupyter_svc.items[0]
-        node_port = jupyter_svc.spec.ports[0].node_port
-
-        pem_path = self.values_yaml["cluster"]["pemPath"]
-        user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
-            self.controller, pem_path, users_port, node_port)
-        s = "\nRun this command on your local machine to access Jupyter Notebook : \n{}\n".format(
-            user_pf_command) + "\n" + "http://localhost:{}/?token={}".format(users_port, jupyter_token)
-        
-        print(s)
-        Path("reference").mkdir(parents=True, exist_ok=True)
-        with open("reference/jupyter_command.txt", "w+") as f:
-            f.write(s)
-            
-        # forward port and open Jupyter URL
-        pid = run("lsof -ti:9999")
-        if pid:
-            for i in pid.split("\n"):
-                p = psutil.Process(int(i))
-                p.terminate()
-        
-        prt_frwd = "ssh -oStrictHostKeyChecking=no ec2-user@{} -i {} -N -L {}:localhost:{} &".format(
-            self.controller, pem_path, users_port, node_port)
-        subprocess.Popen(prt_frwd.split(" "))
-        
-        time.sleep(5)
-        url = "http://localhost:{}/?token={}".format(users_port, jupyter_token)
-        webbrowser.open(url)
-            
-        # add tensorboard port
-        users_port = self.values_yaml["controller"]["services"]["tensorboardPort"]
-        label = "serviceApp=tensorboard"
-        tensorboard_svc = v1.list_namespaced_service(
-            namespace, label_selector=label, watch=False)
-        tensorboard_svc = tensorboard_svc.items[0]
-        node_port = tensorboard_svc.spec.ports[0].node_port
-
-        user_pf_command = "ssh ec2-user@{} -i {} -N -L {}:localhost:{}".format(
-            self.controller, pem_path, users_port, node_port)
-        s = "\nRun this command on your local machine to access Tensorboard Dashboard : \n{}\n".format(
-            user_pf_command) + "\n" + "http://localhost:{}".format(users_port)
-        
-        print(s)
-        Path("reference").mkdir(parents=True, exist_ok=True)
-        with open("reference/tensorboard_command.txt", "w+") as f:
-            f.write(s)
-            
-        # forward port and open Tensorboard UR
-        pid = run("lsof -ti:6006")
-        if pid:
-            for i in pid.split("\n"):
-                p = psutil.Process(int(i))
-                p.terminate()
-        prt_frwd = "ssh -oStrictHostKeyChecking=no ec2-user@{} -i {} -N -L {}:localhost:{}".format(
-            self.controller, pem_path, users_port, node_port)
-        subprocess.Popen(prt_frwd.split(" "))
-        
-        time.sleep(5)
-        url = "http://localhost:{}".format(users_port)
-        webbrowser.open(url)
-        
-        print("Added JupyterNotebook and")
-    
     def createController(self):
         # load fabric connections
         self.initializeFabric()
@@ -720,96 +660,174 @@ class CerebroInstaller:
         label = "app=cerebro-controller"
 
         print("Waiting for pods to start...")
-        while not checkPodStatus(label, self.kube_namespace):
+        while not checkPodStatus(label):
             time.sleep(1)
-
-        # add all permissions to repos
+        
+        # add all permissions to repos  
         cmd1 = "sudo chmod -R 777 /home/ec2-user/cerebro-repo/cerebro-kube"
         cmd2 = "sudo chmod -R 777 /home/ec2-user/user-repo"
         self.conn.sudo(cmd1)
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
 
-        self.addDaskMeta()
-        print("Initialized dask")
-        self.addJupyterMeta()
-        print("Initialized JupyterNotebook")
-
         print("Done")
 
-    def createWorkers(self, create_etl=True, create_mop=True):
+    def createWorkers(self):
         # load fabric connections
         self.initializeFabric()
         
         # create ETL Workers
-        if create_etl:
-            cmds = [
-                "mkdir -p charts",
-                "helm create charts/cerebro-worker-etl",
-                "rm -rf charts/cerebro-worker-etl/templates/*",
-                "cp worker-etl/* charts/cerebro-worker-etl/templates/",
-                "cp values.yaml charts/cerebro-worker-etl/values.yaml"
-            ]
-            c = "helm install --namespace={n} worker-etl-{id} charts/cerebro-worker-etl --set workerID={id}"
-            
-            for i in range(1, self.num_workers + 1):
-                cmds.append(
-                    c.format(id=i, n=self.kube_namespace))
-            
-            for cmd in cmds:
-                time.sleep(0.5)
-                run(cmd, capture_output=False)
-            run("rm -rf charts")
-            
-            print("Waiting for ETL Worker start-up")
-            label = "type=cerebro-worker-etl"
-            while not checkPodStatus(label, self.kube_namespace):
-                time.sleep(1)
-            
-            print("ETL-Workers created successfully")
+        cmds = [
+            "mkdir -p charts",
+            "helm create charts/cerebro-worker-etl",
+            "rm -rf charts/cerebro-worker-etl/templates/*",
+            "cp worker-etl/* charts/cerebro-worker-etl/templates/",
+            "cp values.yaml charts/cerebro-worker-etl/values.yaml"
+        ]
+        c = "helm install --namespace={n} worker-etl-{id} charts/cerebro-worker-etl --set workerID={id}"
+        
+        for i in range(1, self.num_workers + 1):
+            cmds.append(
+                c.format(id=i, n=self.kube_namespace))
+        
+        for cmd in cmds:
+            time.sleep(0.5)
+            run(cmd, capture_output=False)
+        run("rm -rf charts")
+        
+        print("Waiting for ETL Worker start-up")
+        label = "type=cerebro-worker-etl"
+        while not checkPodStatus(label):
+            time.sleep(1)
+        
+        print("ETL-Workers created successfully")
         
         # Create MOP Workers
-        if create_mop:
-            cmds = [
-                "mkdir -p charts",
-                "helm create charts/cerebro-worker-mop",
-                "rm -rf charts/cerebro-worker-mop/templates/*",
-                "cp worker-mop/* charts/cerebro-worker-mop/templates/",
-                "cp values.yaml charts/cerebro-worker-mop/values.yaml",
-            ]
-            c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id}"
-            
-            for i in range(1, self.num_workers + 1):
-                cmds.append(
-                    c.format(id=i, n=self.kube_namespace))
-            
-            for cmd in cmds:
-                time.sleep(0.5)
-                run(cmd, capture_output=False)
-            run("rm -rf charts")
-            
-            print("Waiting for MOP Worker start-up")
-            label = "type=cerebro-worker-mop"
-            while not checkPodStatus(label, self.kube_namespace):
-                time.sleep(1)
-            
-            # write worker_ips to references
-            cmd = "kubectl get service -o json -l {}".format(label)
-            output = json.loads(run(cmd))
-            ips = []
-            for pod in output["items"]:
-                ip = "http://" + str(pod["spec"]["clusterIPs"][0]) + ":7777"
-                ips.append(ip)
-
-            Path("reference").mkdir(parents=True, exist_ok=True)
-            with open("reference/ml_worker_ips.txt", "w+") as f:
-                f.write(
-                    "Model Hopper Worker IPs:\n")
-                f.write("\n".join(ips))
-                f.write("\n\n" + json.dumps(ips))
+        cmds = [
+            "mkdir -p charts",
+            "helm create charts/cerebro-worker-mop",
+            "rm -rf charts/cerebro-worker-mop/templates/*",
+            "cp worker-mop/* charts/cerebro-worker-mop/templates/",
+            "cp values.yaml charts/cerebro-worker-mop/values.yaml",
+        ]
+        c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id}"
+        
+        for i in range(1, self.num_workers + 1):
+            cmds.append(
+                c.format(id=i, n="cerebro"))
+        
+        for cmd in cmds:
+            time.sleep(0.5)
+            run(cmd, capture_output=False)
+        run("rm -rf charts")
+        
+        print("Waiting for MOP Worker start-up")
+        label = "type=cerebro-worker-mop"
+        while not checkPodStatus(label):
+            time.sleep(1)
         
         print("Created the workers")
+       
+    def createWebApp(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        # create mount dir on host
+        self.conn.run("mkdir -p {}".format(self.values_yaml["webApp"]["hostPath"]))
+        
+        cmds = [
+        "mkdir -p charts",
+        "helm create charts/cerebro-webapp",
+        "rm -rf charts/cerebro-webapp/templates/*",
+        "cp ./webapp/* charts/cerebro-webapp/templates/",
+        "cp values.yaml charts/cerebro-webapp/values.yaml",
+        "helm install --namespace=cerebro webapp charts/cerebro-webapp/",
+        "rm -rf charts/cerebro-webapp"
+        ]
 
+        for cmd in cmds:
+            time.sleep(1)
+            out = run(cmd, capture_output=False)
+
+        print("Created WebApp deployment")
+        
+        label = "app=cerebro-webapp"
+
+        print("Waiting for pods to start...")
+        while not checkPodStatus(label):
+            time.sleep(1)
+        
+        self.webAppInitialize()
+
+        print("Done")
+
+    def cleanUp(self):
+        # load fabric connections
+        self.initializeFabric()
+        
+        podNames = getPodNames()
+        
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        
+        # clean up Workers
+        cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
+        cmd2 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro-repo/*' "
+        cmd3 = "kubectl exec -t {} -- bash -c 'rm -rf /user-repo/*' "
+        for pod in podNames["mop_workers"]:
+            run(cmd1.format(pod), haltException=False)
+            run(cmd2.format(pod), haltException=False)
+            run(cmd3.format(pod), haltException=False)
+        helm_etl = ["worker-etl-" + str(i) for i in range(1, self.num_workers + 1)]
+        cmd4 = "helm delete " + " ".join(helm_etl)
+        run(cmd4, capture_output=False, haltException=False)
+        
+        helm_mop = ["worker-mop-" + str(i) for i in range(1, self.num_workers + 1)]
+        cmd5 = "helm delete " + " ".join(helm_mop)
+        run(cmd5, capture_output=False, haltException=False)
+        
+        print("Cleaned up workers")
+        
+        # clean up Controller
+        cmd1 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_data_storage/*'".format(podNames["controller"])
+        cmd2 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_config_storage/*'".format(podNames["controller"])
+        cmd3 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_checkpoint_storage/*'".format(podNames["controller"])
+        cmd4 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(podNames["controller"])
+        for i in [cmd1, cmd2, cmd3, cmd4]:
+            run(i, haltException=False)
+        cmd5 = "helm delete controller"
+        run(cmd5, haltException=False)
+        print("Cleaned up Controller")
+        
+        cmds =  [
+            "sudo rm -rf /home/ec2-user/cerebro-repo/*",
+            "sudo rm -rf /home/ec2-user/user-repo/*",
+            "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0",
+            "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
+        ]
+        try:
+            for cmd in cmds:
+                self.conn.run(cmd)
+                self.s.run(cmd)
+        except Exception as e:
+            print("Got error: " + str(e))
+        print("Deleted cerebro-repo and user-repo")
+        
+        # clean up webapp
+        try:
+            self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
+            run("helm delete webapp")
+        except Exception as e:
+            print("Got error: " + str(e))
+    
+        pods_list = v1.list_namespaced_pod("cerebro")
+        while pods_list.items != []:
+            time.sleep(1)
+            print("Waiting for pods to shutdown...")
+            pods_list = v1.list_namespaced_pod("cerebro")
+
+        print("Done")
+    
     def deleteCluster(self):
         cluster_name = self.values_yaml["cluster"]["name"]
 
@@ -918,198 +936,7 @@ class CerebroInstaller:
             run(cmd11)
             print("Deleted CloudFormation Stack")
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
-    
-    def cleanUp(self):
-        pod_names = getPodNames(self.kube_namespace)
-        n_workers = self.values_yaml["cluster"]["workers"]
-        self.initializeFabric()
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        
-        # clean up Workers
-        cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
-        for pod in pod_names["mop_workers"]:
-            run(cmd1.format(pod), haltException=False)
-        helm_etl = ["worker-etl-" + str(i) for i in range(1, n_workers + 1)]
-        cmd2 = "helm delete " + " ".join(helm_etl)
-        run(cmd2, capture_output=False, haltException=False)
-        
-        helm_mop = ["worker-mop-" + str(i) for i in range(1, n_workers + 1)]
-        cmd2 = "helm delete " + " ".join(helm_mop)
-        run(cmd2, capture_output=False, haltException=False)
-        
-        print("Cleaned up workers")
-        
-        # clean up Controller
-        cmd3 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_data_storage/*'".format(pod_names["controller"])
-        cmd4 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_config_storage/*'".format(pod_names["controller"])
-        cmd5 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_checkpoint_storage/*'".format(pod_names["controller"])
-        cmd6 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(pod_names["controller"])
-        for i in [cmd3, cmd4, cmd5, cmd6]:
-            run(i, haltException=False)
-        cmd7 = "helm delete controller"
-        run(cmd7, haltException=False)
-        print("Cleaned up Controller")
-        
-        cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
-        cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
-        cmd10 = "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0"
-        cmd11 = "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
-        try:
-            for i in [cmd8, cmd9, cmd10, cmd11]:
-                self.conn.run(i)
-                self.s.run(i)
-        except Exception as e:
-            print("Got error: " + str(e))
-        print("Deleted cerebro-repo and user-repo")
 
-        print("\nkubectl get pods:")
-        cmd = "kubectl get pods"
-        run(cmd, capture_output=False)
-        
-        pods_list = v1.list_namespaced_pod(self.kube_namespace)
-        while pods_list.items != []:
-            time.sleep(1)
-            print("Waiting for pods to shutdown...")
-            pods_list = v1.list_namespaced_pod(self.kube_namespace)
-
-        print("Done")
-    
-    def downloadStats(self):
-        # initialize Fabric
-        self.initializeFabric()
-        
-        names = getPodNames(self.kube_namespace)
-        controller = names["controller"]
-        workers = names["mop_workers"]
-        
-        cmd1 = "kubectl exec -t {} -c 'cerebro-controller-container' -- mkdir /data/cerebro_metrics_storage/stats".format(controller)
-        run(cmd1)
-        
-        # copy controller logs
-        cmds = [
-            "mkdir -p /data/cerebro_metrics_storage/stats/controller",
-            "cp cerebro/cerebro.log /data/cerebro_metrics_storage/stats/controller/cerebro.log",
-            "mkdir -p /data/cerebro_metrics_storage/stats/controller/metrics",
-            "cp -r /data/cerebro_metrics_storage/metrics/* /data/cerebro_metrics_storage/stats/controller/metrics",
-            "mkdir -p /data/cerebro_metrics_storage/stats/controller/configs",
-            "cp -r /data/cerebro_config_storage/* /data/cerebro_metrics_storage/stats/controller/configs"
-        ]
-        
-        for cmd in cmds:
-            run("kubectl exec -t {} -c 'cerebro-controller-container' -- bash -c '{}' ".format(controller, cmd))
-        
-        # copy worker logs
-        cmds = [
-            "mkdir -p /data/cerebro_metrics_storage/stats/worker{}",
-            "cp cerebro/cerebro.log /data/cerebro_metrics_storage/stats/worker{}/cerebro.log",
-            "cp worker_logs.log /data/cerebro_metrics_storage/stats/worker{}/worker_logs.log",
-            "cp etl_logs.log /data/cerebro_metrics_storage/stats/worker{}/etl_logs.log"
-        ]
-        count = 1
-        for worker in workers:
-            for cmd in cmds:
-                run("kubectl exec -t {} -c 'cerebro-worker-mop-{}-container' -- bash -c '{}' ".format(worker, count, cmd.format(count)))
-            count += 1
-        
-        print("Copied Controller and /data logs")
-        
-        # copy from EFS to controller node
-        cmd1 = "kubectl exec -t {} -c 'cerebro-controller-container' -- bash -c 'mkdir -p stats' ".format(controller)
-        cmd2 = "kubectl exec -t {} -c 'cerebro-controller-container' -- cp -r /data/cerebro_metrics_storage/stats /cerebro-repo/cerebro-kube".format(controller)
-        run(cmd1)
-        run(cmd2)
-        print("Copied stats to controller node")
-        
-        # download from controller node to local
-        run("rm -rf stats")
-        run("mkdir -p stats")
-        
-        cmd = "scp -r -i {} ec2-user@{}:/home/ec2-user/cerebro-repo/cerebro-kube/stats ./stats".format(self.values_yaml["cluster"]["pemPath"], self.controller)
-        run(cmd)
-        print("Downloaded stats to local")
-    
-    def restartETL(self):
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        pod_names = getPodNames(self.kube_namespace)
-        n_workers = self.values_yaml["cluster"]["workers"]
-        self.initializeFabric()
-        
-        # run git pull on controller
-        cmd1 = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git reset --hard'".format(pod_names["controller"])
-        cmd2 = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git pull'".format(pod_names["controller"])
-        run(cmd1)
-        run(cmd2)
-        
-        cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
-        for pod in pod_names["mop_workers"]:
-            run(cmd1.format(pod), haltException=False)
-        helm_etl = ["worker-etl-" + str(i) for i in range(1, n_workers + 1)]
-        cmd2 = "helm delete " + " ".join(helm_etl)
-        run(cmd2, capture_output=False, haltException=False)
-        
-        cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
-        cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
-        cmd10 = "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0"
-        cmd11 = "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
-        try:
-            for i in [cmd8, cmd9, cmd10, cmd11]:
-                self.s.run(i)
-        except Exception as e:
-            print("Got error: " + str(e))
-        print("Deleted cerebro-repo and user-repo")
-        
-        pods_list = v1.list_namespaced_pod(self.kube_namespace)
-        # wait for ETL workers to shutdown
-        while "worker-etl" in str(pods_list.items):
-            time.sleep(1)
-            pods_list = v1.list_namespaced_pod(self.kube_namespace)
-        
-        print("Cleaned up ETL workers")
-        
-        # re-create ETL workers
-        self.createWorkers(create_etl=True, create_mop=False)
-        
-    def restartMOP(self):
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        pod_names = getPodNames(self.kube_namespace)
-        n_workers = self.values_yaml["cluster"]["workers"]
-        self.initializeFabric()
-        
-        # run git pull on controller
-        cmd1 = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git reset --hard'".format(pod_names["controller"])
-        cmd2 = "kubectl exec -it {} -c cerebro-controller-container -- bash -c 'git pull'".format(pod_names["controller"])
-        run(cmd1)
-        run(cmd2)
-        
-        cmd8 = "sudo rm -rf /home/ec2-user/cerebro-repo/*"
-        cmd9 = "sudo rm -rf /home/ec2-user/user-repo/*"
-        cmd10 = "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0"
-        cmd11 = "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
-        try:
-            for i in [cmd8, cmd9, cmd10, cmd11]:
-                self.s.run(i)
-        except Exception as e:
-            print("Got error: " + str(e))
-        print("Deleted cerebro-repo and user-repo")
-        
-        helm_mop = ["worker-mop-" + str(i) for i in range(1, n_workers + 1)]
-        cmd2 = "helm delete " + " ".join(helm_mop)
-        run(cmd2, capture_output=False, haltException=False)
-        
-        pods_list = v1.list_namespaced_pod(self.kube_namespace)
-        # wait for ETL workers to shutdown
-        while "worker-mop" in str(pods_list.items):
-            time.sleep(1)
-            pods_list = v1.list_namespaced_pod(self.kube_namespace)
-        
-        print("Cleaned up MOP workers")
-        
-        # re-create ETL workers
-        self.createWorkers(create_etl=False, create_mop=True)
-        
     def testing(self):
         pass
 
@@ -1120,7 +947,7 @@ class CerebroInstaller:
         with open("init_cluster/eks_cluster_template.yaml", 'r') as yamlfile:
             eks_cluster_yaml = yamlfile.read()
             
-        worker_instance_type = "\n  - " + "\n  - ".join(self.values_yaml["cluster"]["workerInstance"])
+        worker_instance_type = "\n  - " + "\n  - ".join(self.values_yaml["cluster"]["workerInstances"])
         
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ name }}", self.values_yaml["cluster"]["name"])
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ region }}", self.values_yaml["cluster"]["region"])
@@ -1128,7 +955,7 @@ class CerebroInstaller:
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ worker.instanceType }}", worker_instance_type)
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ volumeSize }}", str(self.values_yaml["cluster"]["volumeSize"]))
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ desiredCapacity }}", str(self.num_workers))
-        eks_cluster_yaml = eks_cluster_yaml.replace("{{ workerSpot }}", str(self.values_yaml["cluster"]["workerSpot"]))
+        eks_cluster_yaml = eks_cluster_yaml.replace("{{ workerSpot }}", str(self.values_yaml["cluster"]["workerSpotInstance"]))
         
         with open("init_cluster/eks_cluster.yaml", "w") as yamlfile:
             yamlfile.write(eks_cluster_yaml)
@@ -1156,14 +983,23 @@ class CerebroInstaller:
         # initialize basic cerebro components
         self.initCerebro()
 
+        # install Cerebro
+        self.installCerebro()
+
     def installCerebro(self):
-        # create controller
+        # creates Controller
         self.createController()
 
-        time.sleep(3)
-        
-        # create workers
+        # create webapp
+        self.createWebApp()
+
+        # create Workers
         self.createWorkers()
+
+        url = self.values_yaml["cluster"]["networking"]["publicDNSName"]
+        port = self.values_yaml["webApp"]["uiNodePort"]
+        print("You can access the cluster using this URL:")
+        print("http://{}:{}".format(url, port))
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
