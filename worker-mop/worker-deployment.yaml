@@ -54,10 +54,9 @@ spec:
         imagePullPolicy: Always
         command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
         workingDir: /cerebro-repo/cerebro-kube
-        #TODO: Fix this to work for heterogenous clusters with different number of GPUs
         resources:
           limits:
-            nvidia.com/gpu: 4
+            nvidia.com/gpu: {{ .Values.numGPU }}
         env:
         - name: WORKER_ID_SELF
           value: "{{ .Values.workerID }}"

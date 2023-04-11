@@ -670,6 +670,11 @@ class CerebroInstaller:
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
 
+        # copy the Cerebro template notebook to user-repo dir
+        controller = getPodNames()["controller"]
+        cmd3 = "kubectl cp misc/CerebroExperiment.ipynb {}:/user-repo -c cerebro-controller-container".format(controller)
+        run(cmd3)
+
         print("Done")
 
     def createWorkers(self):
@@ -703,6 +708,12 @@ class CerebroInstaller:
         print("ETL-Workers created successfully")
         
         # Create MOP Workers
+        num_gpus = []
+        cmd = "nvidia-smi --query-gpu=name --format=csv,noheader | wc -l"
+        out = self.s.run(cmd, hide=True)
+        for _, ans in out.items():
+            num_gpus.append(int(ans.stdout.strip()))
+
         cmds = [
             "mkdir -p charts",
             "helm create charts/cerebro-worker-mop",
@@ -710,11 +721,11 @@ class CerebroInstaller:
             "cp worker-mop/* charts/cerebro-worker-mop/templates/",
             "cp values.yaml charts/cerebro-worker-mop/values.yaml",
         ]
-        c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id}"
+        c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id},numGPU={gpu}"
         
         for i in range(1, self.num_workers + 1):
             cmds.append(
-                c.format(id=i, n="cerebro"))
+                c.format(id=i, gpu=num_gpus[i-1], n="cerebro"))
         
         for cmd in cmds:
             time.sleep(0.5)
