@@ -670,6 +670,11 @@ class CerebroInstaller:
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
 
+        # copy the Cerebro template notebook to user-repo dir
+        controller = getPodNames()["controller"]
+        cmd3 = "kubectl cp misc/CerebroExperiment.ipynb {}:/user-repo -c cerebro-controller-container".format(controller)
+        run(cmd3)
+
         print("Done")
 
     def createWorkers(self):
