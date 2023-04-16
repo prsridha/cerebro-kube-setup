@@ -30,7 +30,7 @@ spec:
       initContainers:
       - name: git-sync-cerebro
         image: {{ .Values.controller.git.gitSyncImage }}
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
@@ -117,4 +117,4 @@ spec:
       - name: git-secret
         secret:
           defaultMode: 256
-          secretName: git-creds # your-ssh-key
+          secretName: git-creds

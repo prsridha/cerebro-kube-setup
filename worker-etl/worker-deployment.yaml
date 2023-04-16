@@ -58,8 +58,6 @@ spec:
           value: "etl"
         - name: RPC_PORT
           value: "{{ .Values.workerETL.rpcPort }}"
-        - name: CORES_PERCENT
-          value: "{{ .Values.workerETL.coresPercent }}"
         volumeMounts:
         - name: git-secret
           mountPath: /etc/git-secret

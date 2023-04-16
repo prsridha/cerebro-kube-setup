@@ -4,9 +4,7 @@ import time
 import fire
 import requests
 import subprocess
-from git import Repo
 import oyaml as yaml
-from pathlib import Path
 from pprint import pprint
 from kubernetes import client, config
 from fabric2 import ThreadingGroup, Connection
@@ -115,7 +113,6 @@ class CerebroInstaller:
         values_yaml["cluster"]["numWorkers"] = user_yaml["numWorkers"]
         values_yaml["cluster"]["controllerInstance"] = user_yaml["controllerInstance"]
         values_yaml["cluster"]["workerInstances"] = user_yaml["workerInstances"]
-        values_yaml["workerETL"]["coresPercent"] = user_yaml["coresPercent"]
             
         with open("values.yaml", "w") as f:
             yaml.safe_dump(values_yaml, f)
@@ -184,6 +181,9 @@ class CerebroInstaller:
         print("Created IAM read-only policy for S3")
         
     def addStorage(self):
+        # load kubernetes config
+        config.load_kube_config()
+
         region = self.values_yaml["cluster"]["region"]
         cluster_name = self.values_yaml["cluster"]["name"]
         image_registry = self.values_yaml["cluster"]["containerImageRegistery"]
@@ -196,7 +196,8 @@ class CerebroInstaller:
         # create service account
         cmd5 = "aws sts get-caller-identity"
         account_id = json.loads(run(cmd5))["Account"]
-        
+        print("AccountId:", account_id)
+
         cmd6 = """
         eksctl create iamserviceaccount \
             --cluster {} \
@@ -254,26 +255,17 @@ class CerebroInstaller:
         run(cmd5)
         print("Added ingress rules to security group")
         
-        # create the AWS EFS File Systems (one for each PV) (unencrypted)
+        # create the AWS EFS File System (unencrypted)
         cmd6 = """
             aws efs create-file-system \
             --region {} \
-            --performance-mode generalPurpose \
+            --performance-mode maxIO \
             --query 'FileSystemId'
             """.format(region)
-        for i in range(4):
-            run(cmd6)
-        print("Created 4 EFS file systems")
-        time.sleep(5)
-        
-        # get file system ids
-        file_systems = []
-        cmd7 = "aws efs describe-file-systems"
-        out = run(cmd7)
-        for i in range(4):
-            file_sys_id = json.loads(out)["FileSystems"][i]["FileSystemId"]
-            file_systems.append(file_sys_id)
-        print("Filesystem IDs:", file_systems)
+        out = run(cmd6)
+        file_sys_id = json.loads(out)
+        print("Created IO-Optimized EFS file system")
+        time.sleep(3)
         
         # get subnets for vpc
         cmd8 = "aws ec2 describe-subnets --filter Name=vpc-id,Values={} --query 'Subnets[?MapPublicIpOnLaunch==`false`].SubnetId'".format(vpc_id)
@@ -291,15 +283,20 @@ class CerebroInstaller:
             --subnet-id $subnet \
             --region {}
         done"""
-        for i in range(4):
-            file_sys_id = file_systems[i]
-            out = run(cmd9.format(" ".join(subnets_list), file_sys_id, sg_id, region))
-            print("Created mount targets for all subnets for file system {}".format(file_sys_id))
-        print("Created mount targets for all subnets for all file systems")
+        out = run(cmd9.format(" ".join(subnets_list), file_sys_id, sg_id, region))
+        print("Created mount targets for all subnets for file system {}".format(file_sys_id))
         
         # create storage class
-        cmd10 = "kubectl apply -f init_cluster/storage_class.yaml"
-        run(cmd10)
+        sc = client.V1StorageClass(
+            api_version="storage.k8s.io/v1",
+            kind="StorageClass",
+            metadata=client.V1ObjectMeta(name="efs-sc"),
+            provisioner="efs.csi.aws.com",
+            parameters={"provisioningMode": "efs-ap", "fileSystemId": str(file_sys_id), "directoryPerms": "700"}
+        )
+        api = client.StorageV1Api()
+        api.create_storage_class(body=sc)
+
         print("Created Storage Class")
         
         # create service account for s3
@@ -314,13 +311,7 @@ class CerebroInstaller:
         run(cmd12, capture_output=False)
         print("Created serviceaccount for S3")
         
-        # update file system id to values.yaml
-        self.values_yaml["cluster"]["efsFileSystemIds"] = {
-            "checkpointFsId": file_systems[0],
-            "dataFsId": file_systems[1],
-            "metricsFsId": file_systems[2],
-            "configFsId": file_systems[3]
-        }
+        self.values_yaml["cluster"]["efsFileSystemId"] = file_sys_id
         with open("values.yaml", "w") as f:
             yaml.safe_dump(self.values_yaml, f)
         print("Saved FileSystem ID in values.yaml")
@@ -669,11 +660,6 @@ class CerebroInstaller:
         self.conn.sudo(cmd1)
         self.conn.sudo(cmd2)
         print("Added permissions to repos")
-
-        # copy the Cerebro template notebook to user-repo dir
-        controller = getPodNames()["controller"]
-        cmd3 = "kubectl cp misc/CerebroExperiment.ipynb {}:/user-repo -c cerebro-controller-container".format(controller)
-        run(cmd3)
 
         print("Done")
 

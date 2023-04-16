@@ -12,9 +12,6 @@ spec:
   resources:
     requests:
       storage: {{ .Values.controller.volumes.checkpointCapacity }}
-  selector: 
-    matchLabels:
-      name: cerebro-checkpoint-pv
 ---
 # Config pvc
 apiVersion: v1
@@ -28,9 +25,6 @@ spec:
   resources:
     requests:
       storage: {{ .Values.controller.volumes.configCapacity }}
-  selector: 
-    matchLabels:
-      name: cerebro-config-pv
 ---
 # Data pvc
 apiVersion: v1
@@ -44,9 +38,6 @@ spec:
   resources:
     requests:
       storage: {{ .Values.controller.volumes.dataCapacity }}
-  selector: 
-    matchLabels:
-      name: cerebro-data-pv
 ---
 # Data pvc
 apiVersion: v1
@@ -60,6 +51,3 @@ spec:
   resources:
     requests:
       storage: {{ .Values.controller.volumes.metricsCapacity }}
-  selector: 
-    matchLabels:
-      name: cerebro-metrics-pv

@@ -29,7 +29,7 @@ creds:
   jupyterTokenSting: projectcerebro
 namespace: cerebro
 cluster:
-  name: cerebro-kube-small-2
+  name: cerebro-kube-tiny
   workerSpotInstance: false
   numWorkers: 3
   region: ca-central-1
@@ -37,11 +37,7 @@ cluster:
   workerInstances:
   - g4dn.12xlarge
   volumeSize: 200
-  efsFileSystemIds:
-    checkpointFsId: fs-0fec20e4d8f7dfc09
-    dataFsId: fs-0c24f239bb8341861
-    metricsFsId: fs-083b42dfb788a63ce
-    configFsId: fs-0ff97978f494e4969
+  efsFileSystemId: fs-0f70377aaf0311f30
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   networking:
@@ -49,10 +45,9 @@ cluster:
     prometheusNodePort: 30090
     grafanaNodePort: 30030
     lokiPort: 3100
-    publicDNSName: ec2-35-183-8-210.ca-central-1.compute.amazonaws.com
+    publicDNSName: ec2-3-99-180-77.ca-central-1.compute.amazonaws.com
 workerETL:
   workerDataPath: /cerebro_data_storage_worker
-  coresPercent: 50
   rpcPort: 7777
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
