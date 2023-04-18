@@ -1,0 +1,12 @@
+clusterName: cerebro-kube-blotch
+clusterRegion: ca-central-1
+workerSpotInstance: true
+numWorkers: 8
+numGPUsPerWorker: 4
+controllerInstance: t3.2xlarge
+workerInstances:
+- g5.12xlarge
+- g4dn.12xlarge
+- p3.8xlarge
+- g5.24xlarge
+- g3.16xlarge

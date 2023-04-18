@@ -21,10 +21,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: cerebro/nodename
+              - key: role
                 operator: In
                 values:
-                - node0
+                - controller
       serviceAccountName: default
       initContainers:
       - name: git-sync-cerebro

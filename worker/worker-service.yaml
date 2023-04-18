@@ -1,0 +1,17 @@
+# Worker Service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: workersvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-worker
+spec:
+  selector:
+    app: cerebro-worker
+  ports:
+  - name: rpc-port
+    protocol: TCP
+    port: {{ .Values.worker.rpcPort }}
+    targetPort: {{ .Values.worker.rpcPort }}
+  type: ClusterIP

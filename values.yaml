@@ -1,17 +1,18 @@
 controller:
   volumes:
-    configCapacity: 1Gi
+    cerebroRepoCapacity: 5Gi
+    userRepoCapacity: 5Gi
+    configCapacity: 5Gi
     configMountPath: /data/cerebro_config_storage
     nodeHardwareInfo: /data/node_hardware_info
-    checkpointCapacity: 20Gi
+    checkpointCapacity: 50Gi
     checkpointMountPath: /data/cerebro_checkpoint_storage
-    metricsCapacity: 5Gi
+    metricsCapacity: 15Gi
     metricsMountPath: /data/cerebro_metrics_storage
-    dataCapacity: 70Gi
+    sharedDataCapacity: 100Gi
+    nodeDataCapacity: 130Gi
     dataMountPath: /data/cerebro_data_storage
-    cerebroRepoHostPath: /home/ec2-user/cerebro-repo
     cerebroRepoMountPath: /cerebro-repo
-    userRepoHostPath: /home/ec2-user/user-repo
     userRepoMountPath: /user-repo
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
@@ -29,15 +30,20 @@ creds:
   jupyterTokenSting: projectcerebro
 namespace: cerebro
 cluster:
-  name: cerebro-kube-tiny
-  workerSpotInstance: false
-  numWorkers: 3
+  name: cerebro-kube-blotch
+  workerSpotInstance: true
+  numWorkers: 8
+  numGPUs: 4
   region: ca-central-1
   controllerInstance: t3.2xlarge
   workerInstances:
+  - g5.12xlarge
   - g4dn.12xlarge
+  - p3.8xlarge
+  - g5.24xlarge
+  - g3.16xlarge
   volumeSize: 200
-  efsFileSystemId: fs-0f70377aaf0311f30
+  efsFileSystemId: fs-079bf163e1fa7c5fb
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   networking:
@@ -45,13 +51,8 @@ cluster:
     prometheusNodePort: 30090
     grafanaNodePort: 30030
     lokiPort: 3100
-    publicDNSName: ec2-3-99-180-77.ca-central-1.compute.amazonaws.com
-workerETL:
-  workerDataPath: /cerebro_data_storage_worker
-  rpcPort: 7777
-  workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
-  workerDataHostPath: /mnt/cerebro_data_storage_worker
-workerMOP:
+    publicDNSName: ec2-15-156-87-230.ca-central-1.compute.amazonaws.com
+worker:
   dataMountPath: /data/cerebro_data_storage
   workerDataPath: /cerebro_data_storage_worker
   rpcPort: 7777

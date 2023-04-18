@@ -22,10 +22,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: cerebro/nodename
+              - key: role
                 operator: In
                 values:
-                - node0
+                - controller
       serviceAccountName: s3-eks-sa
       initContainers:
       - name: git-sync-cerebro
@@ -59,7 +59,7 @@ spec:
         - name: POD_TYPE
           value: "controller"
         - name: RPC_PORT
-          value: "{{ .Values.workerETL.rpcPort }}"
+          value: "{{ .Values.worker.rpcPort }}"
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
         volumeMounts:
@@ -89,13 +89,11 @@ spec:
           name: tnsrbrd-port
       volumes:
       - name: cerebro-repo
-        hostPath:
-          path: {{ .Values.controller.volumes.cerebroRepoHostPath }}
-          type: Directory
+        persistentVolumeClaim:
+          claimName: cerebro-repo-pvc
       - name: user-repo
-        hostPath:
-          path: {{ .Values.controller.volumes.userRepoHostPath }}
-          type: Directory
+        persistentVolumeClaim:
+          claimName: user-repo-pvc
       - name: cerebro-checkpoint-storage
         persistentVolumeClaim:
           claimName: cerebro-checkpoint-pvc

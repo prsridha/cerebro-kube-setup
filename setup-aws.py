@@ -113,6 +113,7 @@ class CerebroInstaller:
         values_yaml["cluster"]["numWorkers"] = user_yaml["numWorkers"]
         values_yaml["cluster"]["controllerInstance"] = user_yaml["controllerInstance"]
         values_yaml["cluster"]["workerInstances"] = user_yaml["workerInstances"]
+        values_yaml["cluster"]["numGPUs"] = user_yaml["numGPUsPerWorker"]
             
         with open("values.yaml", "w") as f:
             yaml.safe_dump(values_yaml, f)
@@ -415,6 +416,7 @@ class CerebroInstaller:
 
         print("Added Ingress rules in Controller SecurityGroup for Grafana and Prometheus ports")
 
+        # change Grafana credentials
         cmd = """
         kubectl exec --namespace prom-metrics -c grafana -it \
         $(kubectl get pods --namespace prom-metrics -l "app.kubernetes.io/name=grafana" -o jsonpath="{.items[0].metadata.name}") -- \
@@ -644,7 +646,7 @@ class CerebroInstaller:
 
         for cmd in cmds:
             time.sleep(1)
-            out = run(cmd, capture_output=False)
+            run(cmd, capture_output=False)
 
         print("Created Controller deployment")
         
@@ -654,77 +656,34 @@ class CerebroInstaller:
         while not checkPodStatus(label):
             time.sleep(1)
         
-        # add all permissions to repos  
-        cmd1 = "sudo chmod -R 777 /home/ec2-user/cerebro-repo/cerebro-kube"
-        cmd2 = "sudo chmod -R 777 /home/ec2-user/user-repo"
-        self.conn.sudo(cmd1)
-        self.conn.sudo(cmd2)
-        print("Added permissions to repos")
-
         print("Done")
 
     def createWorkers(self):
         # load fabric connections
         self.initializeFabric()
         
-        # create ETL Workers
+        # create Workers
         cmds = [
             "mkdir -p charts",
-            "helm create charts/cerebro-worker-etl",
-            "rm -rf charts/cerebro-worker-etl/templates/*",
-            "cp worker-etl/* charts/cerebro-worker-etl/templates/",
-            "cp values.yaml charts/cerebro-worker-etl/values.yaml"
+            "helm create charts/cerebro-worker",
+            "rm -rf charts/cerebro-worker/templates/*",
+            "cp worker/* charts/cerebro-worker/templates/",
+            "cp values.yaml charts/cerebro-worker/values.yaml",
+            "helm install --namespace={} worker charts/cerebro-worker".format(self.kube_namespace)
         ]
-        c = "helm install --namespace={n} worker-etl-{id} charts/cerebro-worker-etl --set workerID={id}"
-        
-        for i in range(1, self.num_workers + 1):
-            cmds.append(
-                c.format(id=i, n=self.kube_namespace))
-        
-        for cmd in cmds:
-            time.sleep(0.5)
-            run(cmd, capture_output=False)
-        run("rm -rf charts")
-        
-        print("Waiting for ETL Worker start-up")
-        label = "type=cerebro-worker-etl"
-        while not checkPodStatus(label):
-            time.sleep(1)
-        
-        print("ETL-Workers created successfully")
-        
-        # Create MOP Workers
-        num_gpus = []
-        cmd = "nvidia-smi --query-gpu=name --format=csv,noheader | wc -l"
-        out = self.s.run(cmd, hide=True)
-        for _, ans in out.items():
-            num_gpus.append(int(ans.stdout.strip()))
 
-        cmds = [
-            "mkdir -p charts",
-            "helm create charts/cerebro-worker-mop",
-            "rm -rf charts/cerebro-worker-mop/templates/*",
-            "cp worker-mop/* charts/cerebro-worker-mop/templates/",
-            "cp values.yaml charts/cerebro-worker-mop/values.yaml",
-        ]
-        c = "helm install --namespace={n} worker-mop-{id} charts/cerebro-worker-mop --set workerID={id},numGPU={gpu}"
-        
-        for i in range(1, self.num_workers + 1):
-            cmds.append(
-                c.format(id=i, gpu=num_gpus[i-1], n="cerebro"))
-        
         for cmd in cmds:
             time.sleep(0.5)
             run(cmd, capture_output=False)
         run("rm -rf charts")
-        
-        print("Waiting for MOP Worker start-up")
-        label = "type=cerebro-worker-mop"
+
+        print("Waiting for ETL Worker start-up")
+        label = "type=cerebro-worker"
         while not checkPodStatus(label):
             time.sleep(1)
         
-        print("Created the workers")
-       
+        print("Workers created successfully")
+  
     def createWebApp(self):
         # load fabric connections
         self.initializeFabric()
@@ -759,6 +718,8 @@ class CerebroInstaller:
         print("Done")
 
     def cleanUp(self):
+        #TODO: Modify this in light of Statefulset + removal of HostPath and other changes
+
         # load fabric connections
         self.initializeFabric()
         

@@ -1,5 +1,31 @@
 # Controller Persistent Volume Claim
 
+# cerebro code pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cerebro-repo-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: {{ .Values.controller.volumes.cerebroRepoCapacity }}
+---
+# user code pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: user-repo-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: {{ .Values.controller.volumes.userRepoCapacity }}
+---
 # Checkpoint pvc
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -37,7 +63,7 @@ spec:
   storageClassName: efs-sc
   resources:
     requests:
-      storage: {{ .Values.controller.volumes.dataCapacity }}
+      storage: {{ .Values.controller.volumes.sharedDataCapacity }}
 ---
 # Data pvc
 apiVersion: v1
