@@ -730,46 +730,28 @@ class CerebroInstaller:
         
         # clean up Workers
         cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
-        cmd2 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro-repo/*' "
-        cmd3 = "kubectl exec -t {} -- bash -c 'rm -rf /user-repo/*' "
         for pod in podNames["mop_workers"]:
             run(cmd1.format(pod), haltException=False)
-            run(cmd2.format(pod), haltException=False)
-            run(cmd3.format(pod), haltException=False)
-        helm_etl = ["worker-etl-" + str(i) for i in range(1, self.num_workers + 1)]
-        cmd4 = "helm delete " + " ".join(helm_etl)
-        run(cmd4, capture_output=False, haltException=False)
-        
-        helm_mop = ["worker-mop-" + str(i) for i in range(1, self.num_workers + 1)]
-        cmd5 = "helm delete " + " ".join(helm_mop)
-        run(cmd5, capture_output=False, haltException=False)
-        
+
+        cmd2 = "helm delete worker"
+        run(cmd2, capture_output=False, haltException=False)
+
         print("Cleaned up workers")
         
         # clean up Controller
-        cmd1 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_data_storage/*'".format(podNames["controller"])
-        cmd2 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_config_storage/*'".format(podNames["controller"])
-        cmd3 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_checkpoint_storage/*'".format(podNames["controller"])
-        cmd4 = "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(podNames["controller"])
-        for i in [cmd1, cmd2, cmd3, cmd4]:
-            run(i, haltException=False)
-        cmd5 = "helm delete controller"
-        run(cmd5, haltException=False)
-        print("Cleaned up Controller")
-        
-        cmds =  [
-            "sudo rm -rf /home/ec2-user/cerebro-repo/*",
-            "sudo rm -rf /home/ec2-user/user-repo/*",
-            "sudo rm -rf /home/ec2-user/cerebro-repo/.Trash-0",
-            "sudo rm -rf /home/ec2-user/user-repo/.Trash-0"
+        cmds = [
+            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_data_storage/*'".format(podNames["controller"]),
+            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_config_storage/*'".format(podNames["controller"]),
+            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_checkpoint_storage/*'".format(podNames["controller"]),
+            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(podNames["controller"]),
+            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /cerebro-repo/*'".format(podNames["controller"]),
+            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /user-repo/*'".format(podNames["controller"])
         ]
-        try:
-            for cmd in cmds:
-                self.conn.run(cmd)
-                self.s.run(cmd)
-        except Exception as e:
-            print("Got error: " + str(e))
-        print("Deleted cerebro-repo and user-repo")
+        for cmd in cmds:
+            run(cmd, haltException=False)
+        cmd3 = "helm delete controller"
+        run(cmd3, haltException=False)
+        print("Cleaned up Controller")
         
         # clean up webapp
         try:
