@@ -30,8 +30,15 @@ spec:
       - name: git-sync-cerebro
         image: {{ .Values.controller.git.gitSyncImage }}
         imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: "2"
+            memory: 1Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
         volumeMounts:
-        - name: webapp-data
+        - name: webapp-repo
           mountPath: {{ .Values.webApp.mountPath }}
         - name: git-secret
           mountPath: /etc/git-secret
@@ -52,6 +59,13 @@ spec:
       - name: cerebro-backend-container
         image: {{ .Values.webApp.image }}
         imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: "4"
+            memory: 4Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
         command: [ "/bin/bash", "/webapp/cerebro-ui/init.sh"]
         workingDir: /webapp/cerebro-ui
         env:
@@ -64,8 +78,10 @@ spec:
           mountPath: /root/.aws
         - name: git-secret
           mountPath: /etc/git-secret
-        - name: webapp-data
+        - name: webapp-repo
           mountPath: {{ .Values.webApp.mountPath }}
+        - name: webapp-data
+          mountPath: /data
         - name: cerebro-hardware-info
           mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
           readOnly: true
@@ -77,6 +93,13 @@ spec:
       - name: cerebro-ui-container
         image: {{ .Values.webApp.image }}
         imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: "4"
+            memory: 4Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
         command: [ "/bin/bash", "/webapp/cerebro-ui/init.sh"]
         workingDir: /webapp/cerebro-ui
         env:
@@ -89,7 +112,7 @@ spec:
           mountPath: /root/.kube
         - name: git-secret
           mountPath: /etc/git-secret
-        - name: webapp-data
+        - name: webapp-repo
           mountPath: {{ .Values.webApp.mountPath }}
         - name: cerebro-hardware-info
           mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
@@ -100,10 +123,12 @@ spec:
         - containerPort: {{ .Values.webApp.uiNodePort }}
           name: ui-nodeport
       volumes:
+      - name: webapp-repo
+        persistentVolumeClaim:
+          claimName: cerebro-repo-pvc
       - name: webapp-data
-        hostPath:
-          path: {{ .Values.webApp.hostPath }}
-          type: Directory
+        emptyDir:
+          sizeLimit: 5Gi
       - name: cerebro-hardware-info
         configMap:
           name: node-hardware-info
@@ -116,4 +141,4 @@ spec:
       - name: git-secret
         secret:
           defaultMode: 256
-          secretName: git-creds # your-ssh-key
+          secretName: git-creds
