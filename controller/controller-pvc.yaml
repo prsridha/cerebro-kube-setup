@@ -65,7 +65,7 @@ spec:
     requests:
       storage: {{ .Values.controller.volumes.sharedDataCapacity }}
 ---
-# Data pvc
+# Metrics pvc
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
