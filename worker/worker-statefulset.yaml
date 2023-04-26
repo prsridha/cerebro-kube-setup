@@ -40,7 +40,7 @@ spec:
           workingDir: /cerebro-repo/cerebro-kube
           env:
           - name: WORKER_ID_SELF
-            value: "$(POD_INDEX)"
+            value: $(POD_INDEX)
           - name: POD_TYPE
             value: "etl"
           - name: RPC_PORT
