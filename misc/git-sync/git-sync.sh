@@ -17,12 +17,15 @@ Host $GIT_SYNC_SERVER
 # clone the repo in the required directory
 mkdir -p $GIT_SYNC_ROOT
 cd $GIT_SYNC_ROOT
-if [ -z "$(ls -A $GIT_SYNC_ROOT/$GIT_SYNC_REPO)" ]; then
-   if [ -z "${GIT_SYNC_BRANCH}" ]; then
-      git clone $GIT_SYNC_REPO
-   else
-      git clone $GIT_SYNC_REPO -b $GIT_SYNC_BRANCH
-   fi
+if [ -z "${GIT_SYNC_BRANCH}" ]; then
+   git clone $GIT_SYNC_REPO
 else
-   echo "Directory not empty, skipping git clone"
+   git clone $GIT_SYNC_REPO -b $GIT_SYNC_BRANCH
+fi
+
+# check status of git clone command
+if [ $? -eq 0 ]; then
+  echo "Successfully cloned the repository."
+else
+  echo "An error occurred while running git clone."
 fi
