@@ -688,9 +688,6 @@ class CerebroInstaller:
         # load fabric connections
         self.initializeFabric()
         
-        # create mount dir on host
-        self.conn.run("mkdir -p {}".format(self.values_yaml["webApp"]["hostPath"]))
-        
         cmds = [
         "mkdir -p charts",
         "helm create charts/cerebro-webapp",
@@ -703,7 +700,7 @@ class CerebroInstaller:
 
         for cmd in cmds:
             time.sleep(1)
-            out = run(cmd, capture_output=False)
+            _ = run(cmd, capture_output=False)
 
         print("Created WebApp deployment")
         

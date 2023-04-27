@@ -17,7 +17,7 @@ Host $GIT_SYNC_SERVER
 # clone the repo in the required directory
 mkdir -p $GIT_SYNC_ROOT
 cd $GIT_SYNC_ROOT
-if [ -z "$(ls -A $GIT_SYNC_ROOT)" ]; then
+if [ -z "$(ls -A $GIT_SYNC_ROOT/$GIT_SYNC_REPO)" ]; then
    if [ -z "${GIT_SYNC_BRANCH}" ]; then
       git clone $GIT_SYNC_REPO
    else
