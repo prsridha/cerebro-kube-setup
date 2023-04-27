@@ -40,7 +40,9 @@ spec:
           workingDir: /cerebro-repo/cerebro-kube
           env:
           - name: WORKER_ID_SELF
-            value: $(POD_INDEX)
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
           - name: POD_TYPE
             value: "etl"
           - name: RPC_PORT
@@ -69,7 +71,9 @@ spec:
             nvidia.com/gpu: {{ .Values.cluster.numGPUs }}
         env:
         - name: WORKER_ID_SELF
-          value: "$(POD_INDEX)"
+          valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
         - name: POD_TYPE
           value: "mop"
         volumeMounts:
