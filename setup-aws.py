@@ -99,7 +99,7 @@ class CerebroInstaller:
             self.values_yaml = yaml.safe_load(yamlfile)
             
         self.num_workers = self.values_yaml["cluster"]["numWorkers"]
-        
+
     def copyUserYAML(self):
         with open('user-values.yaml', 'r') as yamlfile:
             user_yaml = yaml.safe_load(yamlfile)
@@ -427,7 +427,40 @@ class CerebroInstaller:
 
         print("Setup of Metrics Monitoring Complete.")
 
+    def installKeyValueStore(self):
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+
+        # create key-value-store namespace
+        db_namespace = "key-value-store"
+        metadata = client.V1ObjectMeta(name=db_namespace)
+        spec = client.V1NamespaceSpec()
+        namespace = client.V1Namespace(metadata=metadata, spec=spec)
+        v1.create_namespace(namespace)
+        print("Created key-value-store namespace")
+
+        cmds = [
+            "helm repo add bitnami https://charts.bitnami.com/bitnami",
+            "helm repo update",
+            "helm install redis bitnami/redis \
+                --namespace {} \
+                --set master.nodeSelector.role=controller \
+                --set architecture=standalone \
+                --set global.storageClass=efs-sc \
+                --set global.redis.password=cerebro".format(db_namespace)
+        ]
+
+        for cmd in cmds:
+            run(cmd)
+
+        while not checkPodStatus("", db_namespace):
+            time.sleep(1)
+        
+        print("Installed Redis DB successfully")
+
     def patchNodes(self):
+        # TODO: check if this is still needed
+
         # load fabric connections
         self.initializeFabric()
         
@@ -715,7 +748,8 @@ class CerebroInstaller:
         print("Done")
 
     def cleanUp(self):
-        #TODO: Modify this in light of Statefulset + removal of HostPath and other changes
+        #TODO: reset all data from redis
+        #TODO: reset all data from prometheus
 
         # load fabric connections
         self.initializeFabric()
@@ -741,8 +775,6 @@ class CerebroInstaller:
             "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_config_storage/*'".format(podNames["controller"]),
             "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_checkpoint_storage/*'".format(podNames["controller"]),
             "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(podNames["controller"]),
-            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /cerebro-repo/*'".format(podNames["controller"]),
-            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /user-repo/*'".format(podNames["controller"])
         ]
         for cmd in cmds:
             run(cmd, haltException=False)
