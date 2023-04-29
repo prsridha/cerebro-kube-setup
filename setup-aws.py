@@ -173,14 +173,6 @@ class CerebroInstaller:
         run(cmd1)
         print("Created IAM policy for EFS")
         
-        # create iam policy for read-only s3
-        cmd11 = """aws iam create-policy \
-            --policy-name AmazonEKS_S3_Policy \
-            --policy-document file://init_cluster/iam-policy-eks-s3.json
-        """
-        run(cmd11)
-        print("Created IAM read-only policy for S3")
-        
     def addStorage(self):
         # load kubernetes config
         config.load_kube_config()
@@ -579,35 +571,40 @@ class CerebroInstaller:
         run(cmd3, capture_output=False)
         
         # add hardware info configmap
+        node_hardware_info = {}
+        cores, gpus = [], []
+
         # get number of cores
-        cores = []
         out = self.s.run("grep -c ^processor /proc/cpuinfo", hide=True)
         for _, ans in out.items():
             cores.append(int(ans.stdout.strip()))
         
         # get number of GPUs
-        gpus = []
         out = self.s.run("nvidia-smi --query-gpu=name --format=csv,noheader | wc -l", hide=True)
         for _, ans in out.items():
             gpus.append(int(ans.stdout.strip()))
-        
-        node_hardware_info = {}
         
         for i in range(1, self.num_workers+1):
             node_hardware_info["node" + str(i)] = {
                 "num_cores": cores[i-1],
                 "num_gpus": gpus[i-1]
             }
-        
-        path = "init_cluster/node_hardware_info.json"
-        with open(path, "w") as f:
-            json.dump(node_hardware_info, f)
-            
+                    
         # create configmap
-        cmd = "kubectl create -n {} configmap node-hardware-info --from-file=init_cluster/node_hardware_info.json".format(self.kube_namespace)
-        run(cmd)
-        run("rm {}".format(path))
+        configmap = client.V1ConfigMap(data=node_hardware_info, metadata=client.V1ObjectMeta(name="node-hardware-info"))
+        v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
         print("Created configmap for node hardware info")
+
+        # make configmap of select values.yaml values
+        configmap_values = {
+            "controller_data_path": self.values_yaml["controller"]["dataMountPath"],
+            "worker_rpc_port": self.values_yaml["worker"]["rpcPort"],
+            "user_repo_path": self.values_yaml["controller"]["userRepoMountPath"]
+        }
+        # create configmap
+        configmap = client.V1ConfigMap(data=configmap_values, metadata=client.V1ObjectMeta(name="cerebro-info"))
+        v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
+        print("Created configmap for Cerebro values info")
 
         # add ingress rule for JupyterNotebook, Tensorboard and WebServer ports on security group
         jupyterNodePort = self.values_yaml["controller"]["services"]["jupyterNodePort"]
