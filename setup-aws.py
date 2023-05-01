@@ -597,10 +597,10 @@ class CerebroInstaller:
 
         # make configmap of select values.yaml values
         configmap_values = {
-            "controller_data_path": self.values_yaml["controller"]["dataMountPath"],
+            "controller_data_path": self.values_yaml["controller"]["volumes"]["dataMountPath"],
             "worker_rpc_port": self.values_yaml["worker"]["rpcPort"],
-            # "kvs_port": self.values_yaml["controller"]["services"]["kvsPort"],
-            "user_repo_path": self.values_yaml["controller"]["userRepoMountPath"]
+            "user_repo_path": self.values_yaml["controller"]["userRepoMountPath"],
+            "webapp_backend_port": self.values_yaml["webapp"]["backendPort"]
         }
 
         # create cerebro info configmap
