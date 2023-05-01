@@ -591,7 +591,7 @@ class CerebroInstaller:
             }
                     
         # create node hardware info configmap
-        configmap = client.V1ConfigMap(data=node_hardware_info, metadata=client.V1ObjectMeta(name="node-hardware-info"))
+        configmap = client.V1ConfigMap(data={"data":json.dumps(node_hardware_info)}, metadata=client.V1ObjectMeta(name="node-hardware-info"))
         v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
         print("Created configmap for node hardware info")
 
@@ -599,12 +599,12 @@ class CerebroInstaller:
         configmap_values = {
             "controller_data_path": self.values_yaml["controller"]["volumes"]["dataMountPath"],
             "worker_rpc_port": self.values_yaml["worker"]["rpcPort"],
-            "user_repo_path": self.values_yaml["controller"]["userRepoMountPath"],
-            "webapp_backend_port": self.values_yaml["webapp"]["backendPort"]
+            "user_repo_path": self.values_yaml["controller"]["volumes"]["userRepoMountPath"],
+            "webapp_backend_port": self.values_yaml["webApp"]["backendPort"]
         }
 
         # create cerebro info configmap
-        configmap = client.V1ConfigMap(data=configmap_values, metadata=client.V1ObjectMeta(name="cerebro-info"))
+        configmap = client.V1ConfigMap(data={"data":json.dumps(configmap_values)}, metadata=client.V1ObjectMeta(name="cerebro-info"))
         v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
         print("Created configmap for Cerebro values info")
 
