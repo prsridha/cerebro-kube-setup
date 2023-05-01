@@ -590,7 +590,7 @@ class CerebroInstaller:
                 "num_gpus": gpus[i-1]
             }
                     
-        # create configmap
+        # create node hardware info configmap
         configmap = client.V1ConfigMap(data=node_hardware_info, metadata=client.V1ObjectMeta(name="node-hardware-info"))
         v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
         print("Created configmap for node hardware info")
@@ -599,9 +599,11 @@ class CerebroInstaller:
         configmap_values = {
             "controller_data_path": self.values_yaml["controller"]["dataMountPath"],
             "worker_rpc_port": self.values_yaml["worker"]["rpcPort"],
+            # "kvs_port": self.values_yaml["controller"]["services"]["kvsPort"],
             "user_repo_path": self.values_yaml["controller"]["userRepoMountPath"]
         }
-        # create configmap
+
+        # create cerebro info configmap
         configmap = client.V1ConfigMap(data=configmap_values, metadata=client.V1ObjectMeta(name="cerebro-info"))
         v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
         print("Created configmap for Cerebro values info")
