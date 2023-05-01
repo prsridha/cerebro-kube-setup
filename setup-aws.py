@@ -589,7 +589,13 @@ class CerebroInstaller:
                 "num_cores": cores[i-1],
                 "num_gpus": gpus[i-1]
             }
-                    
+
+        # save min num_gpus in values.yaml
+        num_gpus = min(gpus)
+        self.values_yaml["cluster"]["numGPUs"] = num_gpus
+        with open("values.yaml", "w") as f:
+            yaml.safe_dump(self.values_yaml, f)
+
         # create node hardware info configmap
         configmap = client.V1ConfigMap(data={"data":json.dumps(node_hardware_info)}, metadata=client.V1ObjectMeta(name="node-hardware-info"))
         v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
@@ -906,7 +912,23 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
 
     def testing(self):
-        pass
+        # load fabric connections
+        self.initializeFabric()
+        
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+
+        import ast
+
+        configmap = v1.read_namespaced_config_map(name='cerebro-info', namespace='cerebro')
+        data = json.loads(configmap.data["data"])
+        print(data)
+        # rpc_port = configmap.data["data"]["worker_rpc_port"]
+        # user_repo_path = configmap.data["data"]["user_repo_path"]
+
+        # print("rpc_port", rpc_port)
+        # print("user_repo_path", user_repo_path)
+
 
     # call the below functions from CLI
     def createCluster(self):
