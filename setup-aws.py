@@ -758,10 +758,11 @@ class CerebroInstaller:
         # load fabric connections
         self.initializeFabric()
         
-        podNames = getPodNames()
-        
+        # load kubernetes config
         config.load_kube_config()
         v1 = client.CoreV1Api()
+        
+        podNames = getPodNames()
         
         # clean up Workers
         cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
@@ -784,6 +785,11 @@ class CerebroInstaller:
             run(cmd, haltException=False)
         cmd3 = "helm delete controller"
         run(cmd3, haltException=False)
+
+        # delete PVCs
+        v1.delete_namespaced_persistent_volume_claim(name="cerebro-repo-pvc", namespace=self.kube_namespace)
+        v1.delete_namespaced_persistent_volume_claim(name="user-repo-pvc", namespace=self.kube_namespace)
+
         print("Cleaned up Controller")
         
         # clean up webapp
@@ -911,23 +917,7 @@ class CerebroInstaller:
         _runCommands(_deleteCloudFormationStack, "deleteCloudFormationStack")
 
     def testing(self):
-        # load fabric connections
-        self.initializeFabric()
-        
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-
-        import ast
-
-        configmap = v1.read_namespaced_config_map(name='cerebro-info', namespace='cerebro')
-        data = json.loads(configmap.data["data"])
-        print(data)
-        # rpc_port = configmap.data["data"]["worker_rpc_port"]
-        # user_repo_path = configmap.data["data"]["user_repo_path"]
-
-        # print("rpc_port", rpc_port)
-        # print("user_repo_path", user_repo_path)
-
+        pass
 
     # call the below functions from CLI
     def createCluster(self):
