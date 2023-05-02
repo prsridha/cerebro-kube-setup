@@ -509,7 +509,7 @@ class CerebroInstaller:
         # patch nodes with cerebro/nodename label
         time.sleep(5)
         self.patchNodes()
-        
+
         # create namespace, set context and setup kube-config
         cmds1 = [
             # "kubectl create namespace {}".format(self.kube_namespace),
@@ -958,6 +958,9 @@ class CerebroInstaller:
 
         # install Prometheus and Grafana
         self.installMetricsMonitor()
+
+        # install Key Value Store
+        self.installKeyValueStore()
 
         # initialize basic cerebro components
         self.initCerebro()
