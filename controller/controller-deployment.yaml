@@ -63,8 +63,6 @@ spec:
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
         volumeMounts:
-        - name: kube-config
-          mountPath: /root/.kube
         - name: git-secret
           mountPath: /etc/git-secret
         - name: cerebro-repo
@@ -109,9 +107,6 @@ spec:
       - name: cerebro-hardware-info
         configMap:
           name: node-hardware-info
-      - name: kube-config
-        secret:
-          secretName: kube-config
       - name: git-secret
         secret:
           defaultMode: 256
