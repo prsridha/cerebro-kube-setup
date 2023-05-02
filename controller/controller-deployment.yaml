@@ -104,9 +104,6 @@ spec:
       - name: cerebro-data-storage
         persistentVolumeClaim:
           claimName: cerebro-data-pvc
-      - name: cerebro-hardware-info
-        configMap:
-          name: node-hardware-info
       - name: git-secret
         secret:
           defaultMode: 256
