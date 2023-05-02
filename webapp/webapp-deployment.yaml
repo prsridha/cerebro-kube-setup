@@ -123,6 +123,9 @@ spec:
         - containerPort: {{ .Values.webApp.uiNodePort }}
           name: ui-nodeport
       volumes:
+      - name: cerebro-hardware-info
+        configMap:
+          name: node-hardware-info
       - name: webapp-repo
         persistentVolumeClaim:
           claimName: cerebro-repo-pvc

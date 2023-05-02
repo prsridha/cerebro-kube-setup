@@ -77,9 +77,6 @@ spec:
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
         - name: cerebro-metrics-storage
           mountPath: {{ .Values.controller.volumes.metricsMountPath }}
-        - name: cerebro-hardware-info
-          mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
-          readOnly: true
         ports:
         - containerPort: {{ .Values.controller.services.jupyterPort }}
           name: jupyter-port
