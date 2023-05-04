@@ -30,13 +30,6 @@ spec:
       - name: git-sync-cerebro
         image: {{ .Values.controller.git.gitSyncImage }}
         imagePullPolicy: Always
-        resources:
-          limits:
-            cpu: "2"
-            memory: 1Gi
-          requests:
-            cpu: "1"
-            memory: 1Gi
         volumeMounts:
         - name: webapp-repo
           mountPath: {{ .Values.webApp.mountPath }}
@@ -59,13 +52,6 @@ spec:
       - name: cerebro-backend-container
         image: {{ .Values.webApp.image }}
         imagePullPolicy: Always
-        resources:
-          limits:
-            cpu: "4"
-            memory: 4Gi
-          requests:
-            cpu: "1"
-            memory: 1Gi
         command: [ "/bin/bash", "/cerebro-repo/cerebro-ui/init.sh"]
         workingDir: /cerebro-repo/cerebro-ui
         env:
