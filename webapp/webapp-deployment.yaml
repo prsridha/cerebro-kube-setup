@@ -67,7 +67,7 @@ spec:
             cpu: "1"
             memory: 1Gi
         command: [ "/bin/bash", "/cerebro-repo/cerebro-ui/init.sh"]
-        workingDir: /webapp/cerebro-ui
+        workingDir: /cerebro-repo/cerebro-ui
         env:
         - name: POD_TYPE
           value: "webapp_backend"
@@ -101,7 +101,7 @@ spec:
             cpu: "1"
             memory: 1Gi
         command: [ "/bin/bash", "/cerebro-repo/cerebro-ui/init.sh"]
-        workingDir: /webapp/cerebro-ui
+        workingDir: /cerebro-repo/cerebro-ui
         env:
         - name: POD_TYPE
           value: "webapp_ui"
