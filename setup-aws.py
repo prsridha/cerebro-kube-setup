@@ -762,43 +762,44 @@ class CerebroInstaller:
         config.load_kube_config()
         v1 = client.CoreV1Api()
         
-        podNames = getPodNames()
-        
         # clean up Workers
-        cmd1 = "kubectl exec -t {} -- bash -c 'rm -rf /cerebro_data_storage_worker/*' "
-        for pod in podNames["mop_workers"]:
-            run(cmd1.format(pod), haltException=False)
+        try:
+            cmd2 = "helm delete worker"
+            run(cmd2, capture_output=False, haltException=False)
 
-        cmd2 = "helm delete worker"
-        run(cmd2, capture_output=False, haltException=False)
+            for i in range(self.num_workers):
+                v1.delete_namespaced_persistent_volume_claim(name="cerebro-data-storage-worker-cerebro-worker-{}".format(i), namespace=self.kube_namespace)
+                print("Deleted PVC cerebro-data-storage-worker-cerebro-worker-{}".format(i))
+        except Exception as e:
+            print("Got error while cleaning up Workers: " + str(e))
 
-        print("Cleaned up workers")
-        
+        print("Cleaned up Workers")
+
         # clean up Controller
-        cmds = [
-            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_data_storage/*'".format(podNames["controller"]),
-            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_config_storage/*'".format(podNames["controller"]),
-            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_checkpoint_storage/*'".format(podNames["controller"]),
-            "kubectl exec -t {} -c cerebro-controller-container -- bash -c 'rm -rf /data/cerebro_metrics_storage/*'".format(podNames["controller"]),
-        ]
-        for cmd in cmds:
-            run(cmd, haltException=False)
-        cmd3 = "helm delete controller"
-        run(cmd3, haltException=False)
+        try:
+            cmd3 = "helm delete controller"
+            run(cmd3, haltException=False)
 
-        # delete PVCs
-        v1.delete_namespaced_persistent_volume_claim(name="cerebro-repo-pvc", namespace=self.kube_namespace)
-        v1.delete_namespaced_persistent_volume_claim(name="user-repo-pvc", namespace=self.kube_namespace)
+            # delete PVCs
+            v1.delete_namespaced_persistent_volume_claim(name="cerebro-repo-pvc", namespace=self.kube_namespace)
+            v1.delete_namespaced_persistent_volume_claim(name="user-repo-pvc", namespace=self.kube_namespace)
+            v1.delete_namespaced_persistent_volume_claim(name="cerebro-checkpoint-pvc", namespace=self.kube_namespace)
+            v1.delete_namespaced_persistent_volume_claim(name="cerebro-config-pvc", namespace=self.kube_namespace)
+            v1.delete_namespaced_persistent_volume_claim(name="cerebro-data-pvc", namespace=self.kube_namespace)
+            v1.delete_namespaced_persistent_volume_claim(name="cerebro-metrics-pvc", namespace=self.kube_namespace)
+        except Exception as e:
+            print("Got error while cleaning up Controller: " + str(e))
 
         print("Cleaned up Controller")
         
         # clean up webapp
         try:
-            self.conn.sudo("rm -rf /home/ec2-user/web-app/*")
             run("helm delete webapp")
+            print("Cleaned up Webapp")
         except Exception as e:
-            print("Got error: " + str(e))
+            print("Got error while cleaning up WebApp: " + str(e))
     
+        # wait for all pods to shutdown
         pods_list = v1.list_namespaced_pod("cerebro")
         while pods_list.items != []:
             time.sleep(1)
