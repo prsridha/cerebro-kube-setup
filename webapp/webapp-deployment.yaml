@@ -79,13 +79,6 @@ spec:
       - name: cerebro-ui-container
         image: {{ .Values.webApp.image }}
         imagePullPolicy: Always
-        resources:
-          limits:
-            cpu: "4"
-            memory: 4Gi
-          requests:
-            cpu: "1"
-            memory: 1Gi
         command: [ "/bin/bash", "/cerebro-repo/cerebro-ui/init.sh"]
         workingDir: /cerebro-repo/cerebro-ui
         env:
