@@ -31,7 +31,7 @@ spec:
         image: {{ .Values.controller.git.gitSyncImage }}
         imagePullPolicy: Always
         volumeMounts:
-        - name: webapp-repo
+        - name: webapp-data
           mountPath: {{ .Values.webApp.mountPath }}
         - name: git-secret
           mountPath: /etc/git-secret
@@ -46,14 +46,12 @@ spec:
           value: "true"
         - name: GIT_SYNC_SERVER
           value: {{ .Values.creds.gitServer }}
-        securityContext:
-          runAsUser: 0
       containers:
       - name: cerebro-backend-container
         image: {{ .Values.webApp.image }}
         imagePullPolicy: Always
-        command: [ "/bin/bash", "/cerebro-repo/cerebro-ui/init.sh"]
-        workingDir: /cerebro-repo/cerebro-ui
+        command: [ "/bin/bash", "/data/cerebro-ui/init.sh"]
+        workingDir: /data/cerebro-ui
         env:
         - name: POD_TYPE
           value: "webapp_backend"
@@ -64,10 +62,8 @@ spec:
           mountPath: /root/.aws
         - name: git-secret
           mountPath: /etc/git-secret
-        - name: webapp-repo
-          mountPath: {{ .Values.webApp.mountPath }}
         - name: webapp-data
-          mountPath: /data
+          mountPath: {{ .Values.webApp.mountPath }}
         - name: cerebro-hardware-info
           mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
           readOnly: true
@@ -79,8 +75,8 @@ spec:
       - name: cerebro-ui-container
         image: {{ .Values.webApp.image }}
         imagePullPolicy: Always
-        command: [ "/bin/bash", "/cerebro-repo/cerebro-ui/init.sh"]
-        workingDir: /cerebro-repo/cerebro-ui
+        command: [ "/bin/bash", "/data/cerebro-ui/init.sh"]
+        workingDir: /data/cerebro-ui
         env:
         - name: POD_TYPE
           value: "webapp_ui"
@@ -91,7 +87,7 @@ spec:
           mountPath: /root/.kube
         - name: git-secret
           mountPath: /etc/git-secret
-        - name: webapp-repo
+        - name: webapp-data
           mountPath: {{ .Values.webApp.mountPath }}
         - name: cerebro-hardware-info
           mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
@@ -105,9 +101,6 @@ spec:
       - name: cerebro-hardware-info
         configMap:
           name: node-hardware-info
-      - name: webapp-repo
-        persistentVolumeClaim:
-          claimName: cerebro-repo-pvc
       - name: webapp-data
         emptyDir:
           sizeLimit: 5Gi
