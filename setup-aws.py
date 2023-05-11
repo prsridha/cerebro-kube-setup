@@ -40,7 +40,7 @@ def run(cmd, shell=True, capture_output=True, text=True, haltException=True):
         print(str(e))
         raise Exception
 
-def checkPodStatus(label, namespace="cerebro"):
+def checkPodStatus(label, phase="Running", namespace="cerebro"):
     from kubernetes import client, config
 
     config.load_kube_config()
@@ -57,7 +57,7 @@ def checkPodStatus(label, namespace="cerebro"):
     for i in names:
         pod = v1.read_namespaced_pod_status(i, namespace, pretty='true')
         status = pod.status.phase
-        if status != "Running":
+        if status not in phase:
             return False
     return True
 
@@ -221,7 +221,7 @@ class CerebroInstaller:
         print("Waiting for csi driver pods to start-up")
         label = "app.kubernetes.io/name=aws-efs-csi-driver,app.kubernetes.io/instance=aws-efs-csi-driver"
         ns = "kube-system"
-        while not checkPodStatus(label, ns):
+        while not checkPodStatus(label, namespace=ns):
             time.sleep(1)
         print("CSI pods ready")
         
@@ -444,7 +444,7 @@ class CerebroInstaller:
         for cmd in cmds:
             run(cmd)
 
-        while not checkPodStatus("", db_namespace):
+        while not checkPodStatus("", namespace=db_namespace):
             time.sleep(1)
         
         print("Installed Redis DB successfully")
@@ -716,7 +716,7 @@ class CerebroInstaller:
 
         print("Waiting for ETL Worker start-up")
         label = "type=cerebro-worker"
-        while not checkPodStatus(label):
+        while not checkPodStatus(label, phase="Init"):
             time.sleep(1)
         
         print("Workers created successfully")
