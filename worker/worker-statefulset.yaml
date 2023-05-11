@@ -20,6 +20,7 @@ spec:
       annotations:
         statefulset.kubernetes.io/pod-name: cerebro-worker-$(POD_INDEX)
     spec:
+      hostname: cerebro-worker-$(POD_INDEX)
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
