@@ -46,11 +46,7 @@ spec:
                 fieldPath: metadata.name
           - name: POD_TYPE
             value: "etl"
-          - name: RPC_PORT
-            value: "{{ .Values.worker.rpcPort }}"
           volumeMounts:
-          - name: git-secret
-            mountPath: /etc/git-secret
           - name: cerebro-repo
             mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
           - name: user-repo
@@ -78,8 +74,6 @@ spec:
         - name: POD_TYPE
           value: "mop"
         volumeMounts:
-        - name: git-secret
-          mountPath: /etc/git-secret
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
         - name: user-repo
