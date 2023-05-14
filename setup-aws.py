@@ -583,10 +583,10 @@ class CerebroInstaller:
         for _, ans in out.items():
             gpus.append(int(ans.stdout.strip()))
         
-        for i in range(1, self.num_workers+1):
+        for i in range(self.num_workers):
             node_hardware_info["node" + str(i)] = {
-                "num_cores": cores[i-1],
-                "num_gpus": gpus[i-1]
+                "num_cores": cores[i],
+                "num_gpus": gpus[i]
             }
 
         # save min num_gpus in values.yaml
