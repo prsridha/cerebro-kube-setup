@@ -438,8 +438,10 @@ class CerebroInstaller:
                 --set master.nodeSelector.role=controller \
                 --set architecture=standalone \
                 --set global.storageClass=efs-sc \
-                --set global.redis.password=cerebro".format(db_namespace)
-        ]
+                --set global.redis.password=cerebro \
+                --set disableCommands[0]= \
+                --set disableCommands[1]=".format(db_namespace)
+         ]
 
         for cmd in cmds:
             run(cmd)
@@ -798,7 +800,7 @@ class CerebroInstaller:
             print("Cleaned up Webapp")
         except Exception as e:
             print("Got error while cleaning up WebApp: " + str(e))
-    
+
         # wait for all pods to shutdown
         pods_list = v1.list_namespaced_pod("cerebro")
         while pods_list.items != []:
