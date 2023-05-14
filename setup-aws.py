@@ -716,7 +716,7 @@ class CerebroInstaller:
 
         print("Waiting for ETL Worker start-up")
         label = "type=cerebro-worker"
-        while not checkPodStatus(label, phase="Init"):
+        while not checkPodStatus(label, phase="Pending"):
             time.sleep(1)
         
         print("Workers created successfully")
