@@ -776,7 +776,7 @@ class CerebroInstaller:
             print("Got error while cleaning up Workers: " + str(e))
 
         print("Cleaned up Workers")
-
+ 
         # clean up Controller
         try:
             cmd3 = "helm delete controller"
@@ -800,6 +800,15 @@ class CerebroInstaller:
             print("Cleaned up Webapp")
         except Exception as e:
             print("Got error while cleaning up WebApp: " + str(e))
+
+        # wipe Key-Value Store
+        cmd = "kubectl exec -it redis-master-0 -n key-value-store -- redis-cli -a cerebro DEL {}"
+        try:
+            run(cmd.format("etl"))
+            run(cmd.format("health"))
+            run(cmd.format("mop"))
+        except Exception as e:
+            print("Got error while cleaning up Key-Value Store: " + str(e))
 
         # wait for all pods to shutdown
         pods_list = v1.list_namespaced_pod("cerebro")
@@ -962,7 +971,7 @@ class CerebroInstaller:
         # install Prometheus and Grafana
         self.installMetricsMonitor()
 
-        # install Key Value Store
+        # install Key-Value Store
         self.installKeyValueStore()
 
         # initialize basic cerebro components
