@@ -451,41 +451,14 @@ class CerebroInstaller:
         
         print("Installed Redis DB successfully")
 
-    def patchNodes(self):
-        # TODO: check if this is still needed
-
+    def initCerebro(self):
         # load fabric connections
         self.initializeFabric()
-        
+
         config.load_kube_config()
         v1 = client.CoreV1Api()
-        
-        # patch nodes with cerebro/nodename label
-        body = v1.list_node(label_selector="role=controller")
-        body.items[0].metadata.labels["cerebro/nodename"] = "node0"
-        node_name = body.items[0].metadata.name
-        patched_node = body.items[0]
-        
-        v1.patch_node(node_name, patched_node)
-        print("Patched Controller node:", node_name, "as node0")
-        
-        worker_i = 1
-        bodies = v1.list_node(label_selector="role=worker")
-        for body in bodies.items:
-            body.metadata.labels["cerebro/nodename"] = "node" + str(worker_i)
-            node_name = body.metadata.name
-            patched_node = body
-            v1.patch_node(node_name, patched_node)
-            print("Patched Worker node:", node_name, "as node" + str(worker_i))
-            worker_i += 1
-            
-        # create Cerebro directories on Controller and Worker nodes
-        home = "/home/ec2-user"
-        self.conn.run("mkdir -p {}/cerebro-repo".format(home))
-        self.conn.run("mkdir -p {}/user-repo".format(home))
-        self.s.run("mkdir -p {}/user-repo".format(home))
-        self.s.run("mkdir -p {}/cerebro-repo".format(home))
 
+        # save Cerebro publicDNS
         cmd3 = "aws ec2 describe-instances --filters 'Name=instance-state-code,Values=16'"
         instances = json.loads(run(cmd3))
         for i in instances["Reservations"]:
@@ -493,24 +466,9 @@ class CerebroInstaller:
             if "controller" in str(tags):
                 public_dns_name = i["Instances"][0]["PublicDnsName"]
                 break
-        print(public_dns_name)
-        
         self.values_yaml["cluster"]["networking"]["publicDNSName"] = public_dns_name
         with open("values.yaml", "w") as f:
             yaml.safe_dump(self.values_yaml, f)
-        
-        print("Created directories for cerebro repos")
-    
-    def initCerebro(self):
-        # load fabric connections
-        self.initializeFabric()
-        
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        
-        # patch nodes with cerebro/nodename label
-        time.sleep(5)
-        self.patchNodes()
 
         # create namespace, set context and setup kube-config
         cmds1 = [
