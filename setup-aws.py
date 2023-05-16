@@ -606,7 +606,7 @@ class CerebroInstaller:
         url = "http://" + host + ":" + port + "/health"
 
         count = 0
-        while 0 <= count < 5:
+        while 0 <= count < 20:
             try:
                 r = requests.get(url)
                 print(r.json())
@@ -614,7 +614,7 @@ class CerebroInstaller:
             except Exception as e:
                 print("Waiting for webapp to go live...", str(e))
                 count += 1
-                time.sleep(4)
+                time.sleep(2)
         
         if count != -1:
             raise Exception("Webapp didn't go live. FAILED.")
@@ -734,7 +734,16 @@ class CerebroInstaller:
             print("Got error while cleaning up Workers: " + str(e))
 
         print("Cleaned up Workers")
- 
+
+        # wipe Key-Value Store
+        cmd = "kubectl exec -it redis-master-0 -n key-value-store -- redis-cli -a cerebro DEL {}"
+        try:
+            run(cmd.format("etl"))
+            run(cmd.format("health"))
+            run(cmd.format("mop"))
+        except Exception as e:
+            print("Got error while cleaning up Key-Value Store: " + str(e))
+
         # clean up Controller
         try:
             cmd3 = "helm delete controller"
@@ -758,15 +767,6 @@ class CerebroInstaller:
             print("Cleaned up Webapp")
         except Exception as e:
             print("Got error while cleaning up WebApp: " + str(e))
-
-        # wipe Key-Value Store
-        cmd = "kubectl exec -it redis-master-0 -n key-value-store -- redis-cli -a cerebro DEL {}"
-        try:
-            run(cmd.format("etl"))
-            run(cmd.format("health"))
-            run(cmd.format("mop"))
-        except Exception as e:
-            print("Got error while cleaning up Key-Value Store: " + str(e))
 
         # wait for all pods to shutdown
         pods_list = v1.list_namespaced_pod("cerebro")
