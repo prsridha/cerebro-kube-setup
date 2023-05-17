@@ -712,7 +712,6 @@ class CerebroInstaller:
         print("Done")
 
     def cleanUp(self):
-        #TODO: reset all data from redis
         #TODO: reset all data from prometheus
 
         # load fabric connections
@@ -736,11 +735,11 @@ class CerebroInstaller:
         print("Cleaned up Workers")
 
         # wipe Key-Value Store
+        keys = ["heartbeat", "etl_task", "etl_func", "etl_worker_status", "etl_worker_progress"]
         cmd = "kubectl exec -it redis-master-0 -n key-value-store -- redis-cli -a cerebro DEL {}"
         try:
-            run(cmd.format("etl"))
-            run(cmd.format("health"))
-            run(cmd.format("mop"))
+            for k in keys:
+                run(cmd.format(k))
         except Exception as e:
             print("Got error while cleaning up Key-Value Store: " + str(e))
 
