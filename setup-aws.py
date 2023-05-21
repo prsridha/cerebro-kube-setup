@@ -574,11 +574,10 @@ class CerebroInstaller:
         print("Created configmap for Cerebro values info")
 
         # add ingress rule for JupyterNotebook, Tensorboard and WebServer ports on security group
-        jupyterNodePort = self.values_yaml["controller"]["services"]["jupyterNodePort"]
-        tensorboardNodePort = self.values_yaml["controller"]["services"]["tensorboardNodePort"]
-        uiNodePort = self.values_yaml["webApp"]["uiNodePort"]
-        backendNodePort = self.values_yaml["webApp"]["backendNodePort"]
-        
+        jupyter_node_port = self.values_yaml["controller"]["services"]["jupyterNodePort"]
+        tensorboard_node_port = self.values_yaml["controller"]["services"]["tensorboardNodePort"]
+        ui_node_port = self.values_yaml["webApp"]["uiNodePort"]
+        backend_node_port = self.values_yaml["webApp"]["backendNodePort"]
         cluster_name = self.values_yaml["cluster"]["name"]
         
         cmd1 = "aws ec2 describe-security-groups"
@@ -595,10 +594,10 @@ class CerebroInstaller:
         --cidr 0.0.0.0/0
         """
         
-        out = run(cmd2.format(controller_sg_id, jupyterNodePort, haltException=False))
-        out = run(cmd2.format(controller_sg_id, tensorboardNodePort, haltException=False))
-        out = run(cmd2.format(controller_sg_id, uiNodePort, haltException=False))
-        out = run(cmd2.format(controller_sg_id, backendNodePort, haltException=False))
+        out = run(cmd2.format(controller_sg_id, jupyter_node_port, haltException=False))
+        out = run(cmd2.format(controller_sg_id, tensorboard_node_port, haltException=False))
+        out = run(cmd2.format(controller_sg_id, ui_node_port, haltException=False))
+        out = run(cmd2.format(controller_sg_id, backend_node_port, haltException=False))
     
     def webAppInitialize(self):
         host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
