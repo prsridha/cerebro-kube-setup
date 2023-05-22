@@ -9,8 +9,8 @@ from pprint import pprint
 from kubernetes import client, config
 from fabric2 import ThreadingGroup, Connection
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-## Prerequisites
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # Prerequisites
 # Create an IAM user with Admin permissions + Access Key - Programmatic access. Save the .csv cred file
 # Install aws cli on local and configure it using the downloaded cred file
 # Create a key-pair on EC2 with name cerebro-kube-kp
@@ -21,6 +21,7 @@ from fabric2 import ThreadingGroup, Connection
 # Install helm
 # Run oneTime() given below
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 
 def run(cmd, shell=True, capture_output=True, text=True, haltException=True):
     try:
@@ -39,6 +40,7 @@ def run(cmd, shell=True, capture_output=True, text=True, haltException=True):
         print("Command Unsuccessful:", cmd)
         print(str(e))
         raise Exception
+
 
 def checkPodStatus(label, phase="Running", namespace="cerebro"):
     from kubernetes import client, config
@@ -60,6 +62,7 @@ def checkPodStatus(label, phase="Running", namespace="cerebro"):
         if status not in phase:
             return False
     return True
+
 
 def getPodNames(namespace="cerebro"):
     label = "app=cerebro-controller"
@@ -88,32 +91,33 @@ def getPodNames(namespace="cerebro"):
         "mop_workers": mop_workers
     }
 
+
 class CerebroInstaller:
     def __init__(self):
         self.home = "."
         self.values_yaml = None
         self.kube_namespace = "cerebro"
-        
+
         self.copyUserYAML()
         with open('values.yaml', 'r') as yamlfile:
             self.values_yaml = yaml.safe_load(yamlfile)
-            
+
         self.num_workers = self.values_yaml["cluster"]["numWorkers"]
 
     def copyUserYAML(self):
         with open('user-values.yaml', 'r') as yamlfile:
             user_yaml = yaml.safe_load(yamlfile)
-        
+
         with open('values.yaml', 'r') as yamlfile:
             values_yaml = yaml.safe_load(yamlfile)
-            
+
         values_yaml["cluster"]["name"] = user_yaml["clusterName"]
         values_yaml["cluster"]["region"] = user_yaml["clusterRegion"]
         values_yaml["cluster"]["workerSpotInstance"] = user_yaml["workerSpotInstance"]
         values_yaml["cluster"]["numWorkers"] = user_yaml["numWorkers"]
         values_yaml["cluster"]["controllerInstance"] = user_yaml["controllerInstance"]
         values_yaml["cluster"]["workerInstances"] = user_yaml["workerInstances"]
-            
+
         with open("values.yaml", "w") as f:
             yaml.safe_dump(values_yaml, f)
 
@@ -131,30 +135,30 @@ class CerebroInstaller:
                     break
                 else:
                     nodes.append(i["PublicDnsName"])
-        
+
         self.controller = host
         self.workers = nodes
-        
+
         # load pem and initialize connections
         user = "ec2-user"
         pem_path = self.values_yaml["cluster"]["pemPath"]
         connect_kwargs = {"key_filename": pem_path}
-        
+
         self.conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
         self.s = ThreadingGroup(*nodes, user=user,
                                 connect_kwargs=connect_kwargs)
-    
+
     def oneTime(self):
         # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_console
         # https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
         # https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html
         # https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
-        
+
         # generate ssh key
         ssh_cmd = ' ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -q -N "" '
         run(ssh_cmd)
         print("Created ssh key")
-        
+
         # add public key to git
         get_pub_key = 'cat ~/.ssh/id_rsa.pub'
         pub_key = run(get_pub_key)
@@ -162,7 +166,7 @@ class CerebroInstaller:
         formatted_git_cmd = git_cmd.format(git_token=self.values_yaml["creds"]["gitToken"], ssh_pub=pub_key)
         run(formatted_git_cmd)
         print("Added ssh key to github")
-        
+
         # create IAM EFS Policy
         cmd1 = """
         aws iam create-policy \
@@ -171,7 +175,7 @@ class CerebroInstaller:
         """
         run(cmd1)
         print("Created IAM policy for EFS")
-        
+
     def addStorage(self):
         # load kubernetes config
         config.load_kube_config()
@@ -179,12 +183,12 @@ class CerebroInstaller:
         region = self.values_yaml["cluster"]["region"]
         cluster_name = self.values_yaml["cluster"]["name"]
         image_registry = self.values_yaml["cluster"]["containerImageRegistery"]
-        
+
         # add OIDC to IAM role
         cmd4 = "eksctl utils associate-iam-oidc-provider --cluster {} --approve".format(cluster_name)
         run(cmd4, capture_output=False)
         time.sleep(3)
-        
+
         # create service account
         cmd5 = "aws sts get-caller-identity"
         account_id = json.loads(run(cmd5))["Account"]
@@ -202,7 +206,7 @@ class CerebroInstaller:
         run(cmd6, capture_output=False)
         print("Created IAM ServiceAccount")
         time.sleep(3)
-        
+
         # install efs csi driver
         cmd13 = "helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver/"
         cmd14 = "helm repo update"
@@ -224,29 +228,29 @@ class CerebroInstaller:
         while not checkPodStatus(label, namespace=ns):
             time.sleep(1)
         print("CSI pods ready")
-        
+
         # get vpc id
         cmd8 = 'aws eks describe-cluster --name {} --query "cluster.resourcesVpcConfig.vpcId" --output text'.format(cluster_name)
         vpc_id = run(cmd8)
         print("VPC ID:", vpc_id)
-        
+
         # get CIDR range
         cmd3 = 'aws ec2 describe-vpcs --vpc-ids {} --query "Vpcs[].CidrBlock" --output text'.format(vpc_id)
         cidr_range = run(cmd3)
         print("CIDR Range:", cidr_range)
-        
+
         # create security group for inbound NFS traffic
         cmd4 = 'aws ec2 create-security-group --group-name efs-nfs-sg --description "Allow NFS traffic for EFS" --vpc-id {}'.format(vpc_id)
         out = run(cmd4)
         sg_id = json.loads(out)["GroupId"]
         print("Created security group")
         print(sg_id)
-        
+
         # add rules to the security group
         cmd5 = 'aws ec2 authorize-security-group-ingress --group-id {} --protocol tcp --port 2049 --cidr {}'.format(sg_id, cidr_range)
         run(cmd5)
         print("Added ingress rules to security group")
-        
+
         # create the AWS EFS File System (unencrypted)
         cmd6 = """
             aws efs create-file-system \
@@ -258,14 +262,14 @@ class CerebroInstaller:
         file_sys_id = json.loads(out)
         print("Created IO-Optimized EFS file system")
         time.sleep(3)
-        
+
         # get subnets for vpc
         cmd8 = "aws ec2 describe-subnets --filter Name=vpc-id,Values={} --query 'Subnets[?MapPublicIpOnLaunch==`false`].SubnetId'".format(vpc_id)
         out = run(cmd8)
         subnets_list = json.loads(out)
         print("Subnets list:", str(subnets_list))
         time.sleep(5)
-        
+
         # create mount targets
         cmd9 = """
         for subnet in {}; do
@@ -277,7 +281,7 @@ class CerebroInstaller:
         done"""
         out = run(cmd9.format(" ".join(subnets_list), file_sys_id, sg_id, region))
         print("Created mount targets for all subnets for file system {}".format(file_sys_id))
-        
+
         # create storage class
         sc = client.V1StorageClass(
             api_version="storage.k8s.io/v1",
@@ -290,7 +294,7 @@ class CerebroInstaller:
         api.create_storage_class(body=sc)
 
         print("Created Storage Class")
-        
+
         # create service account for s3
         cmd12 = """ eksctl create iamserviceaccount \
         --name s3-eks-sa \
@@ -299,31 +303,31 @@ class CerebroInstaller:
         --attach-policy-arn arn:aws:iam::{}:policy/AmazonEKS_S3_Policy \
         --approve
         """.format(cluster_name, account_id)
-        
+
         run(cmd12, capture_output=False)
         print("Created serviceaccount for S3")
-        
+
         self.values_yaml["cluster"]["efsFileSystemId"] = file_sys_id
         with open("values.yaml", "w") as f:
             yaml.safe_dump(self.values_yaml, f)
         print("Saved FileSystem ID in values.yaml")
-   
+
     def addLocalDNSCache(self):
         self.initializeFabric()
         self.s.run("mkdir -p /home/ec2-user/init_cluster")
         self.s.put("init_cluster/local_dns.sh", "/home/ec2-user/init_cluster")
         # run local_dns script
         self.s.sudo("/bin/bash /home/ec2-user/init_cluster/local_dns.sh")
-        
+
         print("Created Local DNS Cache on worker nodes")
-        
+
     def installMetricsMonitor(self):
         # load fabric connections
         self.initializeFabric()
 
         config.load_kube_config()
         v1 = client.CoreV1Api()
-        
+
         prometheus_port = self.values_yaml["cluster"]["networking"]["prometheusNodePort"]
         grafana_port = self.values_yaml["cluster"]["networking"]["grafanaNodePort"]
 
@@ -336,7 +340,7 @@ class CerebroInstaller:
         for cmd in cmds:
             out = run(cmd)
             print(out)
-        
+
         cmd1 = """
         helm install prometheus prometheus-community/kube-prometheus-stack \
         --namespace prom-metrics \
@@ -344,10 +348,10 @@ class CerebroInstaller:
         --set prometheus.service.nodePort={} \
         --set prometheus.service.type=NodePort \
         --version 45.6.0""".format(prometheus_port)
-        
+
         cmd2 = "helm repo add grafana https://grafana.github.io/helm-charts"
         cmd3 = "helm upgrade --install loki grafana/loki-stack -n prom-metrics"
-        
+
         print("Installing Prometheus and Grafana...")
         run(cmd1, capture_output=False)
         run(cmd2, capture_output=False)
@@ -370,7 +374,7 @@ class CerebroInstaller:
         for cmd in cmds:
             out = run(cmd)
             print(out)
-        
+
         # increase DCGM DeamonSet LivenessProbe timeout
         cmd1 = """
             kubectl patch ds -n prom-metrics  dcgm-exporter -p \
@@ -385,23 +389,23 @@ class CerebroInstaller:
         run(cmd1)
         run(cmd2)
         print("Created Cerebro Dashboard in Grafana")
-        
+
         # add ingress rule for ports on security group
         cluster_name = self.values_yaml["cluster"]["name"]
-        
+
         cmd1 = "aws ec2 describe-security-groups"
         out = json.loads(run(cmd1))
         for sg in out["SecurityGroups"]:
             if cluster_name in sg["GroupName"] and "controller" in sg["GroupName"]:
                 controller_sg_id = sg["GroupId"]
-        
+
         cmd2 = """aws ec2 authorize-security-group-ingress \
         --group-id {} \
         --protocol tcp \
         --port {} \
         --cidr 0.0.0.0/0
         """
-        
+
         out = run(cmd2.format(controller_sg_id, prometheus_port), haltException=False)
         out = run(cmd2.format(controller_sg_id, grafana_port), haltException=False)
 
@@ -441,14 +445,14 @@ class CerebroInstaller:
                 --set global.redis.password=cerebro \
                 --set disableCommands[0]= \
                 --set disableCommands[1]=".format(db_namespace)
-         ]
+        ]
 
         for cmd in cmds:
             run(cmd)
 
         while not checkPodStatus("", namespace=db_namespace):
             time.sleep(1)
-        
+
         print("Installed Redis DB successfully")
 
     def initCerebro(self):
@@ -481,12 +485,12 @@ class CerebroInstaller:
                 self.kube_namespace, os.path.expanduser("~/.aws/credentials")),
             "kubectl create -f init_cluster/rbac_roles.yaml"
         ]
-    
+
         for cmd in cmds1:
             out = run(cmd)
             print(out)
         print("Created Cerebro namespace, set context and added kube-config secret")
-        
+
         # add EKS identity mapping for Role
         cmd1 = "aws sts get-caller-identity"
         cmd2 = """
@@ -501,7 +505,7 @@ class CerebroInstaller:
         cluster_name = self.values_yaml["cluster"]["name"]
         cluster_region = self.values_yaml["cluster"]["region"]
         run(cmd2.format(cluster_name, cluster_region, account_id))
-            
+
         # create kubernetes secret using ssh key and git server as known host
         known_hosts_cmd = "ssh-keyscan {} > ./init_cluster/known_hosts".format(self.values_yaml["creds"]["gitServer"])
         github_known_hosts = run(known_hosts_cmd, capture_output=False)
@@ -516,19 +520,19 @@ class CerebroInstaller:
         kubedns = run(cmd2)
         domain = "cluster.local"
         localdns = self.values_yaml["cluster"]["networking"]["nodeLocalListenIP"]
-        
+
         with open("init_cluster/nodelocaldns_template.yaml", "r") as f:
             yml = f.read()
             yml = yml.replace("__PILLAR__LOCAL__DNS__", localdns)
             yml = yml.replace("__PILLAR__DNS__DOMAIN__", domain)
             yml = yml.replace("__PILLAR__DNS__SERVER__", kubedns)
-            
+
         with open("init_cluster/nodelocaldns.yaml", "w") as f:
             f.write(yml)
-        
+
         cmd3 = "kubectl apply -f init_cluster/nodelocaldns.yaml"
         run(cmd3, capture_output=False)
-        
+
         # add hardware info configmap
         node_hardware_info = {}
         cores, gpus = [], []
@@ -537,12 +541,12 @@ class CerebroInstaller:
         out = self.s.run("grep -c ^processor /proc/cpuinfo", hide=True)
         for _, ans in out.items():
             cores.append(int(ans.stdout.strip()))
-        
+
         # get number of GPUs
         out = self.s.run("nvidia-smi --query-gpu=name --format=csv,noheader | wc -l", hide=True)
         for _, ans in out.items():
             gpus.append(int(ans.stdout.strip()))
-        
+
         for i in range(self.num_workers):
             node_hardware_info["node" + str(i)] = {
                 "num_cores": cores[i],
@@ -556,7 +560,7 @@ class CerebroInstaller:
             yaml.safe_dump(self.values_yaml, f)
 
         # create node hardware info configmap
-        configmap = client.V1ConfigMap(data={"data":json.dumps(node_hardware_info)}, metadata=client.V1ObjectMeta(name="node-hardware-info"))
+        configmap = client.V1ConfigMap(data={"data": json.dumps(node_hardware_info)}, metadata=client.V1ObjectMeta(name="node-hardware-info"))
         v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
         print("Created configmap for node hardware info")
 
@@ -569,7 +573,7 @@ class CerebroInstaller:
         }
 
         # create cerebro info configmap
-        configmap = client.V1ConfigMap(data={"data":json.dumps(configmap_values)}, metadata=client.V1ObjectMeta(name="cerebro-info"))
+        configmap = client.V1ConfigMap(data={"data": json.dumps(configmap_values)}, metadata=client.V1ObjectMeta(name="cerebro-info"))
         v1.create_namespaced_config_map(namespace=self.kube_namespace, body=configmap)
         print("Created configmap for Cerebro values info")
 
@@ -579,26 +583,25 @@ class CerebroInstaller:
         ui_node_port = self.values_yaml["webApp"]["uiNodePort"]
         backend_node_port = self.values_yaml["webApp"]["backendNodePort"]
         cluster_name = self.values_yaml["cluster"]["name"]
-        
+
         cmd1 = "aws ec2 describe-security-groups"
         out = json.loads(run(cmd1))
         for sg in out["SecurityGroups"]:
             if cluster_name in sg["GroupName"] and "controller" in sg["GroupName"]:
                 controller_sg_id = sg["GroupId"]
-        
-        
+
         cmd2 = """aws ec2 authorize-security-group-ingress \
         --group-id {} \
         --protocol tcp \
         --port {} \
         --cidr 0.0.0.0/0
         """
-        
+
         out = run(cmd2.format(controller_sg_id, jupyter_node_port, haltException=False))
         out = run(cmd2.format(controller_sg_id, tensorboard_node_port, haltException=False))
         out = run(cmd2.format(controller_sg_id, ui_node_port, haltException=False))
         out = run(cmd2.format(controller_sg_id, backend_node_port, haltException=False))
-    
+
     def webAppInitialize(self):
         host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
         port = str(self.values_yaml["webApp"]["backendNodePort"])
@@ -614,12 +617,12 @@ class CerebroInstaller:
                 print("Waiting for webapp to go live...", str(e))
                 count += 1
                 time.sleep(2)
-        
+
         if count != -1:
             raise Exception("Webapp didn't go live. FAILED.")
 
         # initialize webapp by sending values.yaml file
-        files = {'file': open('values.yaml','rb')}
+        files = {'file': open('values.yaml', 'rb')}
         url = "http://" + host + ":" + port + "/initialize"
         r = requests.post(url, files=files)
         pprint(r.content)
@@ -629,7 +632,7 @@ class CerebroInstaller:
     def createController(self):
         # load fabric connections
         self.initializeFabric()
-        
+
         cmds = [
             "mkdir -p charts",
             "helm create charts/cerebro-controller",
@@ -645,19 +648,19 @@ class CerebroInstaller:
             run(cmd, capture_output=False)
 
         print("Created Controller deployment")
-        
+
         label = "app=cerebro-controller"
 
         print("Waiting for pods to start...")
         while not checkPodStatus(label):
             time.sleep(1)
-        
+
         print("Done")
 
     def createWorkers(self):
         # load fabric connections
         self.initializeFabric()
-        
+
         # create Workers
         cmds = [
             "mkdir -p charts",
@@ -677,21 +680,21 @@ class CerebroInstaller:
         label = "type=cerebro-worker"
         while not checkPodStatus(label, phase="Pending"):
             time.sleep(1)
-        
+
         print("Workers created successfully")
-  
+
     def createWebApp(self):
         # load fabric connections
         self.initializeFabric()
-        
+
         cmds = [
-        "mkdir -p charts",
-        "helm create charts/cerebro-webapp",
-        "rm -rf charts/cerebro-webapp/templates/*",
-        "cp ./webapp/* charts/cerebro-webapp/templates/",
-        "cp values.yaml charts/cerebro-webapp/values.yaml",
-        "helm install --namespace=cerebro webapp charts/cerebro-webapp/",
-        "rm -rf charts/cerebro-webapp"
+            "mkdir -p charts",
+            "helm create charts/cerebro-webapp",
+            "rm -rf charts/cerebro-webapp/templates/*",
+            "cp ./webapp/* charts/cerebro-webapp/templates/",
+            "cp values.yaml charts/cerebro-webapp/values.yaml",
+            "helm install --namespace=cerebro webapp charts/cerebro-webapp/",
+            "rm -rf charts/cerebro-webapp"
         ]
 
         for cmd in cmds:
@@ -699,27 +702,27 @@ class CerebroInstaller:
             _ = run(cmd, capture_output=False)
 
         print("Created WebApp deployment")
-        
+
         label = "app=cerebro-webapp"
 
         print("Waiting for pods to start...")
         while not checkPodStatus(label):
             time.sleep(1)
-        
+
         self.webAppInitialize()
 
         print("Done")
 
     def cleanUp(self):
-        #TODO: reset all data from prometheus
+        # TODO: reset all data from prometheus
 
         # load fabric connections
         self.initializeFabric()
-        
+
         # load kubernetes config
         config.load_kube_config()
         v1 = client.CoreV1Api()
-        
+
         # clean up Workers
         try:
             cmd2 = "helm delete worker"
@@ -758,7 +761,7 @@ class CerebroInstaller:
             print("Got error while cleaning up Controller: " + str(e))
 
         print("Cleaned up Controller")
-        
+
         # clean up webapp
         try:
             run("helm delete webapp")
@@ -774,7 +777,7 @@ class CerebroInstaller:
             pods_list = v1.list_namespaced_pod("cerebro")
 
         print("Done")
-    
+
     def deleteCluster(self):
         cluster_name = self.values_yaml["cluster"]["name"]
 
@@ -784,45 +787,45 @@ class CerebroInstaller:
         for i in out["FileSystems"]:
             fs_ids.append(i["FileSystemId"])
         print("Found file systems:", str(fs_ids))
-        
+
         def _runCommands(fn, name):
             try:
                 fn()
             except Exception as e:
                 print("Command Failed for", name)
                 print(str(e))
-        
+
         # delete the cluster
-        def _deleteCluster(): 
+        def _deleteCluster():
             cmd1 = "eksctl delete cluster -f ./init_cluster/eks_cluster.yaml"
             run(cmd1, capture_output=False)
             print("Deleted the cluster")
         _runCommands(_deleteCluster, "clusterDelete")
         time.sleep(3)
-                
+
         # Delete MountTargets
         def _deleteMountTargets():
             mt_ids = []
-            for fs_id in fs_ids:          
+            for fs_id in fs_ids:
                 cmd2 = """ aws efs describe-mount-targets \
                 --file-system-id {} \
                 --output json
                 """.format(fs_id)
                 out = json.loads(run(cmd2))
                 mt_ids.extend([i["MountTargetId"] for i in out["MountTargets"]])
-    
+
             cmd3 = """ aws efs delete-mount-target \
             --mount-target-id {}
             """
-            for mt_id  in mt_ids:
+            for mt_id in mt_ids:
                 run(cmd3.format(mt_id))
                 print("Deleted MountTarget:", mt_id)
             print("Deleted all MountTargets")
         _runCommands(_deleteMountTargets, "deleteMountTarget")
         time.sleep(5)
-        
+
         # delete FileSystem
-        def _deleteFileSystem():            
+        def _deleteFileSystem():
             for fs_id in fs_ids:
                 cmd6 = """ aws efs delete-file-system \
                 --file-system-id {}
@@ -832,24 +835,24 @@ class CerebroInstaller:
             print("Deleted all FileSystems")
         _runCommands(_deleteFileSystem, "deleteFileSystem")
         time.sleep(3)
-        
+
         # delete SecurityGroup efs-nfs-sg
         def _deleteSecurityGroups():
             sg_gid = None
             cmd4 = "aws ec2 describe-security-groups"
             out = json.loads(run(cmd4))
-            
+
             for sg in out["SecurityGroups"]:
                 if sg["GroupName"] == "efs-nfs-sg":
                     sg_gid = sg["GroupId"]
                     break
-            
+
             cmd5 = "aws ec2 delete-security-group --group-id {}".format(sg_gid)
             run(cmd5)
             print("Deleted SecurityGroup efs-nfs-sg")
         _runCommands(_deleteSecurityGroups, "deleteSecurityGroups")
         time.sleep(3)
-        
+
         # delete Subnets
         def _deleteSubnets():
             cmd7 = " aws ec2 describe-subnets"
@@ -858,11 +861,11 @@ class CerebroInstaller:
             for i in out["Subnets"]:
                 if cluster_name in str(i["Tags"]):
                     run(cmd8.format(i["SubnetId"]))
-                    print("Deleted Subnet:",i["SubnetId"])
+                    print("Deleted Subnet:", i["SubnetId"])
             print("Deleted all Subnets")
         _runCommands(_deleteSubnets, "deleteSubnets")
         time.sleep(3)
-                
+
         # delete VPC
         def _deleteVPC():
             cmd9 = " aws ec2 describe-vpcs"
@@ -871,11 +874,11 @@ class CerebroInstaller:
             for i in out["Vpcs"]:
                 if "Tags" in i and cluster_name in str(i["Tags"]):
                     run(cmd10.format(i["VpcId"]))
-                    print("Deleted VPC:",i["VpcId"])
+                    print("Deleted VPC:", i["VpcId"])
             print("Deleted all VPCs")
         _runCommands(_deleteVPC, "deleteVPC")
         time.sleep(3)
-                
+
         # delete Cloudformation Stack
         def _deleteCloudFormationStack():
             stack_name = "eksctl-" + cluster_name + "-cluster"
@@ -890,12 +893,12 @@ class CerebroInstaller:
     # call the below functions from CLI
     def createCluster(self):
         from datetime import timedelta
-         
+
         with open("init_cluster/eks_cluster_template.yaml", 'r') as yamlfile:
             eks_cluster_yaml = yamlfile.read()
-            
+
         worker_instance_type = "\n  - " + "\n  - ".join(self.values_yaml["cluster"]["workerInstances"])
-        
+
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ name }}", self.values_yaml["cluster"]["name"])
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ region }}", self.values_yaml["cluster"]["region"])
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ controller.instanceType }}", self.values_yaml["cluster"]["controllerInstance"])
@@ -903,7 +906,7 @@ class CerebroInstaller:
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ volumeSize }}", str(self.values_yaml["cluster"]["volumeSize"]))
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ desiredCapacity }}", str(self.num_workers))
         eks_cluster_yaml = eks_cluster_yaml.replace("{{ workerSpot }}", str(self.values_yaml["cluster"]["workerSpotInstance"]))
-        
+
         with open("init_cluster/eks_cluster.yaml", "w") as yamlfile:
             yamlfile.write(eks_cluster_yaml)
 
@@ -913,7 +916,7 @@ class CerebroInstaller:
             subprocess.run(cmd, shell=True, text=True)
             end = time.time()
             print("Created cluster successfully")
-            print("Time taken to create cluster:", str(timedelta(seconds=end-start)))
+            print("Time taken to create cluster:", str(timedelta(seconds=end - start)))
         except Exception as e:
             print("Couldn't create the cluster")
             print(str(e))
@@ -950,6 +953,7 @@ class CerebroInstaller:
         port = self.values_yaml["webApp"]["uiNodePort"]
         print("You can access the cluster using this URL:")
         print("http://{}:{}".format(url, port))
+
 
 if __name__ == '__main__':
     fire.Fire(CerebroInstaller)
