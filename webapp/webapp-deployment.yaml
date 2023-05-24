@@ -48,25 +48,20 @@ spec:
           value: {{ .Values.creds.gitServer }}
       containers:
       - name: cerebro-backend-container
-        image: {{ .Values.webApp.image }}
+        image: {{ .Values.controller.git.image }}
         imagePullPolicy: Always
-        command: [ "/bin/bash", "/data/cerebro-ui/init.sh"]
-        workingDir: /data/cerebro-ui
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        workingDir: /cerebro-repo/cerebro-kube/backend
         env:
         - name: POD_TYPE
-          value: "webapp_backend"
+          value: "backend"
         volumeMounts:
-        - name: kube-config
-          mountPath: /root/.kube
-        - name: aws-config
-          mountPath: /root/.aws
-        - name: git-secret
-          mountPath: /etc/git-secret
+        - name: cerebro-repo
+          mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
         - name: webapp-data
           mountPath: {{ .Values.webApp.mountPath }}
-        - name: cerebro-hardware-info
-          mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
-          readOnly: true
+        - name: aws-config
+          mountPath: /root/.aws
         ports:
         - containerPort: {{ .Values.webApp.backendPort }}
           name: backend-port
@@ -98,15 +93,12 @@ spec:
         - containerPort: {{ .Values.webApp.uiNodePort }}
           name: ui-nodeport
       volumes:
-      - name: cerebro-hardware-info
-        configMap:
-          name: node-hardware-info
+      - name: cerebro-repo
+        persistentVolumeClaim:
+          claimName: cerebro-repo-pvc
       - name: webapp-data
         emptyDir:
           sizeLimit: 5Gi
-      - name: kube-config
-        secret:
-          secretName: kube-config
       - name: aws-config
         secret:
           secretName: aws-config

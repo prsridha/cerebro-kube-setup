@@ -569,7 +569,14 @@ class CerebroInstaller:
             "controller_data_path": self.values_yaml["controller"]["volumes"]["dataMountPath"],
             "worker_rpc_port": self.values_yaml["worker"]["rpcPort"],
             "user_repo_path": self.values_yaml["controller"]["volumes"]["userRepoMountPath"],
-            "webapp_backend_port": self.values_yaml["webApp"]["backendPort"]
+            "webapp_backend_port": self.values_yaml["webApp"]["backendPort"],
+            "public_dns_name": self.values_yaml["cluster"]["networking"]["publicDNSName"],
+            "jupyter_token_string": self.values_yaml["creds"]["jupyterTokenSting"],
+            "jupyter_node_port": self.values_yaml["controller"]["services"]["jupyterNodePort"],
+            "tensorboard_node_port": self.values_yaml["controller"]["services"]["tensorboardNodePort"],
+            "grafana_node_port": self.values_yaml["cluster"]["networking"]["grafanaNodePort"],
+            "prometheus_node_port": self.values_yaml["cluster"]["networking"]["prometheusNodePort"],
+            "loki_port": self.values_yaml["cluster"]["networking"]["lokiPort"]
         }
 
         # create cerebro info configmap
