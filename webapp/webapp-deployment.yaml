@@ -56,6 +56,8 @@ spec:
         - name: POD_TYPE
           value: "backend"
         volumeMounts:
+        - name: git-secret
+          mountPath: /etc/git-secret
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
         - name: webapp-data
