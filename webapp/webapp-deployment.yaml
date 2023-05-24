@@ -82,9 +82,6 @@ spec:
           mountPath: /etc/git-secret
         - name: webapp-data
           mountPath: {{ .Values.webApp.mountPath }}
-        - name: cerebro-hardware-info
-          mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
-          readOnly: true
         ports:
         - containerPort: {{ .Values.webApp.uiPort }}
           name: ui-port
