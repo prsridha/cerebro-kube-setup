@@ -609,33 +609,6 @@ class CerebroInstaller:
         out = run(cmd2.format(controller_sg_id, ui_node_port, haltException=False))
         out = run(cmd2.format(controller_sg_id, backend_node_port, haltException=False))
 
-    def webAppInitialize(self):
-        host = self.values_yaml["cluster"]["networking"]["publicDNSName"]
-        port = str(self.values_yaml["webApp"]["backendNodePort"])
-        url = "http://" + host + ":" + port + "/health"
-
-        count = 0
-        while 0 <= count < 20:
-            try:
-                r = requests.get(url)
-                print(r.json())
-                count = -1
-            except Exception as e:
-                print("Waiting for webapp to go live...", str(e))
-                count += 1
-                time.sleep(2)
-
-        if count != -1:
-            raise Exception("Webapp didn't go live. FAILED.")
-
-        # initialize webapp by sending values.yaml file
-        files = {'file': open('values.yaml', 'rb')}
-        url = "http://" + host + ":" + port + "/initialize"
-        r = requests.post(url, files=files)
-        pprint(r.content)
-
-        print("Done")
-
     def createController(self):
         # load fabric connections
         self.initializeFabric()
@@ -715,8 +688,6 @@ class CerebroInstaller:
         print("Waiting for pods to start...")
         while not checkPodStatus(label):
             time.sleep(1)
-
-        self.webAppInitialize()
 
         print("Done")
 
