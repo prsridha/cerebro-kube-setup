@@ -78,8 +78,6 @@ spec:
         - name: BACKEND_HOST
           value: {{ .Values.cluster.networking.publicDNSName }}
         volumeMounts:
-        - name: kube-config
-          mountPath: /root/.kube
         - name: git-secret
           mountPath: /etc/git-secret
         - name: webapp-data
