@@ -14,8 +14,8 @@ metadata:
   name: copy-rolebinding
   namespace: cerebro
 subjects:
-- kind: Group
-  name: system:nodes
+- kind: ServiceAccount
+  name: default
 roleRef:
   kind: Role
   name: copy-role
@@ -39,6 +39,8 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: s3-eks-sa
+- kind: ServiceAccount
+  name: default
 roleRef:
   kind: Role
   name: configmap-reader
