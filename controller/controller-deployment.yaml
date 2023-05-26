@@ -16,15 +16,16 @@ spec:
         app: cerebro-controller
         type: cerebro-controller
     spec:
+      hostname: cerebro-controller
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: cerebro/nodename
+              - key: role
                 operator: In
                 values:
-                - node0
+                - controller
       serviceAccountName: s3-eks-sa
       initContainers:
       - name: git-sync-cerebro
@@ -48,27 +49,6 @@ spec:
           value: {{ .Values.creds.gitServer }}
         securityContext:
           runAsUser: 0
-      - name: git-sync-user-repo
-        image: {{ .Values.controller.git.gitSyncImage }}
-        imagePullPolicy: Always
-        volumeMounts:
-        - name: user-repo
-          mountPath: {{ .Values.controller.volumes.userRepoMountPath }}
-        - name: git-secret
-          mountPath: /etc/git-secret
-        env:
-        - name: GIT_SYNC_REPO
-          value: {{ .Values.controller.git.userRepoURL }}
-        - name: GIT_SYNC_BRANCH
-          value: {{ .Values.controller.git.userRepoBranch }}
-        - name: GIT_SYNC_ROOT
-          value: {{ .Values.controller.volumes.userRepoMountPath }}
-        - name: GIT_SYNC_SSH
-          value: "true"
-        - name: GIT_SYNC_SERVER
-          value: {{ .Values.creds.gitServer }}
-        securityContext:
-          runAsUser: 0
       containers:
       - name: cerebro-controller-container
         image: {{ .Values.controller.git.image }}
@@ -78,13 +58,11 @@ spec:
         env:
         - name: POD_TYPE
           value: "controller"
-        - name: GIT_SYNC_SERVER
-          value: {{ .Values.creds.gitServer }}
+        - name: RPC_PORT
+          value: "{{ .Values.worker.rpcPort }}"
         - name: ML_METRICS_LOGDIR
           value: {{ .Values.controller.volumes.metricsMountPath }}
         volumeMounts:
-        - name: kube-config
-          mountPath: /root/.kube
         - name: git-secret
           mountPath: /etc/git-secret
         - name: cerebro-repo
@@ -99,25 +77,18 @@ spec:
           mountPath: {{ .Values.controller.volumes.dataMountPath }}
         - name: cerebro-metrics-storage
           mountPath: {{ .Values.controller.volumes.metricsMountPath }}
-        - name: cerebro-hardware-info
-          mountPath: {{ .Values.controller.volumes.nodeHardwareInfo }}
-          readOnly: true
         ports:
-        - containerPort: {{ .Values.controller.services.daskPort }}
-          name: dask-port
         - containerPort: {{ .Values.controller.services.jupyterPort }}
           name: jupyter-port
         - containerPort: {{ .Values.controller.services.tensorboardPort }}
           name: tnsrbrd-port
       volumes:
       - name: cerebro-repo
-        hostPath:
-          path: {{ .Values.controller.volumes.cerebroRepoHostPath }}
-          type: Directory
+        persistentVolumeClaim:
+          claimName: cerebro-repo-pvc
       - name: user-repo
-        hostPath:
-          path: {{ .Values.controller.volumes.userRepoHostPath }}
-          type: Directory
+        persistentVolumeClaim:
+          claimName: user-repo-pvc
       - name: cerebro-checkpoint-storage
         persistentVolumeClaim:
           claimName: cerebro-checkpoint-pvc
@@ -130,13 +101,7 @@ spec:
       - name: cerebro-data-storage
         persistentVolumeClaim:
           claimName: cerebro-data-pvc
-      - name: cerebro-hardware-info
-        configMap:
-          name: node-hardware-info
-      - name: kube-config
-        secret:
-          secretName: kube-config
       - name: git-secret
         secret:
           defaultMode: 256
-          secretName: git-creds # your-ssh-key
+          secretName: git-creds

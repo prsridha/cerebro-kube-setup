@@ -1,0 +1,117 @@
+# Worker StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cerebro-worker
+  namespace: {{ .Release.Namespace }}
+spec:
+  podManagementPolicy: Parallel
+  serviceName: workersvc
+  replicas: {{ .Values.cluster.numWorkers }}
+  selector:
+    matchLabels:
+      app: cerebro-worker
+      type: cerebro-worker
+  template:
+    metadata:
+      labels:
+        app: cerebro-worker
+        type: cerebro-worker
+      annotations:
+        statefulset.kubernetes.io/pod-name: cerebro-worker-$(POD_INDEX)
+    spec:
+      hostname: cerebro-worker-$(POD_INDEX)
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - cerebro-controller
+                - cerebro-worker
+            topologyKey: "kubernetes.io/hostname"
+      serviceAccountName: s3-eks-sa
+      initContainers:
+        - name: etl-container
+          image: {{ .Values.controller.git.image }}
+          imagePullPolicy: IfNotPresent
+          command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+          workingDir: /cerebro-repo/cerebro-kube
+          env:
+          - name: WORKER_ID_SELF
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_TYPE
+            value: "etl"
+          volumeMounts:
+          - name: cerebro-repo
+            mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
+          - name: user-repo
+            mountPath: {{ .Values.controller.volumes.userRepoMountPath }}
+          - name: cerebro-data-storage-worker
+            mountPath: {{ .Values.worker.workerDataPath }}
+          - name: cerebro-controller-storage
+            mountPath: {{ .Values.controller.volumes.dataMountPath }}
+          ports:
+          - containerPort: {{ .Values.worker.rpcPort }}
+      containers:
+      - name: mop-container
+        image: {{ .Values.controller.git.image }}
+        imagePullPolicy: IfNotPresent
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        workingDir: /cerebro-repo/cerebro-kube
+        resources:
+          limits:
+            nvidia.com/gpu: {{ .Values.cluster.numGPUs }}
+        env:
+        - name: WORKER_ID_SELF
+          valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        - name: POD_TYPE
+          value: "mop"
+        volumeMounts:
+        - name: cerebro-repo
+          mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
+        - name: user-repo
+          mountPath: {{ .Values.controller.volumes.userRepoMountPath }}
+        - name: cerebro-data-storage-worker
+          mountPath: {{ .Values.worker.workerDataPath }}
+        - name: cerebro-checkpoint-storage
+          mountPath: {{ .Values.controller.volumes.checkpointMountPath }}
+        - name: cerebro-controller-storage
+          mountPath: {{ .Values.controller.volumes.dataMountPath }}
+        - name: cerebro-metrics-storage
+          mountPath: {{ .Values.controller.volumes.metricsMountPath }}
+      volumes:
+      - name: cerebro-repo
+        persistentVolumeClaim:
+          claimName: cerebro-repo-pvc
+      - name: user-repo
+        persistentVolumeClaim:
+          claimName: user-repo-pvc
+      - name: cerebro-checkpoint-storage
+        persistentVolumeClaim:
+          claimName: cerebro-checkpoint-pvc
+      - name: cerebro-controller-storage
+        persistentVolumeClaim:
+          claimName: cerebro-data-pvc
+      - name: cerebro-metrics-storage
+        persistentVolumeClaim:
+          claimName: cerebro-metrics-pvc
+      - name: git-secret
+        secret:
+          defaultMode: 256
+          secretName: git-creds
+  volumeClaimTemplates:
+  - metadata:
+      name: cerebro-data-storage-worker
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: efs-sc
+      resources:
+        requests:
+          storage: {{ .Values.controller.volumes.nodeDataCapacity }}

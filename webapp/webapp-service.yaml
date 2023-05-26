@@ -1,0 +1,35 @@
+# Webapp Service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: webbackendsvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-webapp-svc
+    serviceApp: webapp
+spec:
+  selector:
+    app: cerebro-webapp
+  ports:
+  - protocol: "TCP"
+    port: {{ .Values.webApp.backendPort }}
+    targetPort: {{ .Values.webApp.backendPort }}
+    nodePort: {{ .Values.webApp.backendNodePort }}
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webuisvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-webapp-ui
+    serviceApp: webapp
+spec:
+  selector:
+    app: cerebro-webapp
+  ports:
+    - port: {{ .Values.webApp.uiPort }}
+      targetPort: {{ .Values.webApp.uiPort }}
+      nodePort: {{ .Values.webApp.uiNodePort }}
+  type: NodePort

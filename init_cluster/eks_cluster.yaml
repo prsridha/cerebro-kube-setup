@@ -1,7 +1,7 @@
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
-  name: cerebro-kube-big-1
+  name: cerebro-kube-blotch
   region: ca-central-1
 availabilityZones: ["ca-central-1a", "ca-central-1b"]
 managedNodeGroups:
@@ -18,10 +18,11 @@ managedNodeGroups:
   labels:
     role: worker
   instanceTypes: 
-  - g4dn.8xlarge
-  - g4dn.4xlarge
-  - g5.4xlarge
-  - g5.8xlarge
+  - g5.12xlarge
+  - g4dn.12xlarge
+  - p3.8xlarge
+  - g5.24xlarge
+  - g3.16xlarge
   desiredCapacity: 8
   volumeSize: 200
   ami: ami-09e225cf6c5c13915
@@ -35,4 +36,4 @@ managedNodeGroups:
   overrideBootstrapCommand: |
     #!/bin/bash
 
-    /etc/eks/bootstrap.sh cerebro-kube-big-1 --container-runtime containerd
+    /etc/eks/bootstrap.sh cerebro-kube-blotch --container-runtime containerd
