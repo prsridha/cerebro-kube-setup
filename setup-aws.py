@@ -2,10 +2,8 @@ import os
 import json
 import time
 import fire
-import requests
 import subprocess
 import oyaml as yaml
-from pprint import pprint
 from kubernetes import client, config
 from fabric2 import ThreadingGroup, Connection
 
