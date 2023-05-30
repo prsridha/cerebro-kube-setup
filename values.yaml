@@ -39,7 +39,7 @@ cluster:
   workerInstances:
   - g4dn.12xlarge
   volumeSize: 200
-  efsFileSystemId: fs-09037238b48fb9c1f
+  efsFileSystemId: fs-07fc9886d9a61805e
   pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
   containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
   networking:
@@ -47,7 +47,7 @@ cluster:
     prometheusNodePort: 30090
     grafanaNodePort: 30030
     lokiPort: 3100
-    publicDNSName: ec2-3-98-58-162.ca-central-1.compute.amazonaws.com
+    publicDNSName: ec2-99-79-193-109.ca-central-1.compute.amazonaws.com
 worker:
   dataMountPath: /data/cerebro_data_storage
   workerDataPath: /cerebro_data_storage_worker
@@ -55,7 +55,7 @@ worker:
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
 webApp:
-  mountPath: /cerebro-repo
+  mountPath: /data
   backendPort: 8083
   backendNodePort: 30083
   uiPort: 80
