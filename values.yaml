@@ -55,7 +55,7 @@ worker:
   workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
 webApp:
-  mountPath: /cerebro-repo
+  mountPath: /data
   backendPort: 8083
   backendNodePort: 30083
   uiPort: 80
