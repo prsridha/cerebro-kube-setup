@@ -4,4 +4,4 @@ workerSpotInstance: true
 numWorkers: 4
 controllerInstance: t3.2xlarge
 workerInstances:
-- g4dn.xlarge
+- g4dn.12xlarge
