@@ -16,7 +16,7 @@ controller:
     userRepoMountPath: /user-repo
   git:
     cerebroRepoURL: git@github.com:prsridha/cerebro-kube.git
-    cerebroRepoBranch: feature/stability-improvement
+    cerebroRepoBranch: feature/multi-gpu-mop
     gitSyncImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/git-sync:latest
     image: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   services:
