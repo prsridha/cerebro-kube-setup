@@ -322,6 +322,8 @@ class CerebroInstaller:
         print("Created Local DNS Cache on worker nodes")
 
     def installMetricsMonitor(self):
+        time.sleep(5)
+
         # load fabric connections
         self.initializeFabric()
 
