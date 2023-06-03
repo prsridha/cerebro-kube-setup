@@ -1,6 +1,6 @@
 clusterName: cerebro-kube-small-1
 clusterRegion: ca-central-1
-workerSpotInstance: true
+workerSpotInstance: false
 numWorkers: 4
 controllerInstance: t3.2xlarge
 workerInstances:
