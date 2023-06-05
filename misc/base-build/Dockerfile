@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.6.0-base-ubuntu20.04
+FROM nvidia/cuda:11.6.0-devel-ubuntu20.04
 
 RUN apt-get update
 RUN apt-get install -y curl
@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # install ML requirements with CUDA specific version
-RUN pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+RUN pip3 install --pre torch torchvision torchaudio -f https://download.pytorch.org/whl/nightly/cu113/torch_nightly.html
 
 # install aws-iam-authenticator
 RUN curl -Lo /usr/local/bin/aws-iam-authenticator \

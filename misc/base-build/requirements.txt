@@ -44,12 +44,6 @@ cffi==1.15.1
     #   pynacl
 charset-normalizer==2.1.1
     # via requests
-click==8.0.4
-    # via
-    #   dask-cuda
-    #   distributed
-    #   nltk
-    #   typer
 cloudpickle==2.2.0
     # via
     #   dask
@@ -444,7 +438,7 @@ typing-extensions==4.3.0
     #   tensorflow
     #   torch
     #   torchvision
-urllib3==1.26.12
+urllib3==1.26.6
     # via
     #   distributed
     #   requests
