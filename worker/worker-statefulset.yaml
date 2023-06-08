@@ -74,6 +74,8 @@ spec:
         - name: POD_TYPE
           value: "mop"
         volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
         - name: cerebro-repo
           mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
         - name: user-repo
@@ -102,10 +104,9 @@ spec:
       - name: cerebro-metrics-storage
         persistentVolumeClaim:
           claimName: cerebro-metrics-pvc
-      - name: git-secret
-        secret:
-          defaultMode: 256
-          secretName: git-creds
+      - name: dshm
+        emptyDir:
+          medium: Memory
   volumeClaimTemplates:
   - metadata:
       name: cerebro-data-storage-worker
