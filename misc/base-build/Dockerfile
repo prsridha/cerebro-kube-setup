@@ -7,7 +7,6 @@ RUN apt-get install -y git
 RUN apt-get install -y lshw
 RUN apt-get install -y zip
 RUN apt-get install -y python3-pip
-RUN pip install --upgrade click==8.0.4
 
 COPY requirements.txt .
 
