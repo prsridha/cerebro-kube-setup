@@ -5,8 +5,8 @@ metadata:
   region: ca-central-1
   version: "1.26"
 availabilityZones: 
-  - ca-central-1b
   - ca-central-1a
+  - ca-central-1b
 managedNodeGroups:
 - name: ng-controller
   labels:
@@ -16,7 +16,7 @@ managedNodeGroups:
   volumeSize: 200
   ssh:
     allow: true
-    publicKeyName: cerebro-kube-kp
+    publicKeyName: cerebro-aif-kp
 - name: ng-worker
   labels:
     role: worker
@@ -24,15 +24,15 @@ managedNodeGroups:
   - g4dn.12xlarge
   desiredCapacity: 2
   volumeSize: 200
-  ami: ami-09d9bd2461439239e
+  ami: ami-09fc606cc966b2dad
   amiFamily: AmazonLinux2
   availabilityZones: 
-  - ca-central-1b
   - ca-central-1a
+  - ca-central-1b
   spot: False
   ssh:
     allow: true
-    publicKeyName: cerebro-kube-kp
+    publicKeyName: cerebro-aif-kp
   overrideBootstrapCommand: |
     #!/bin/bash
 

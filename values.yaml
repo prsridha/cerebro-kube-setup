@@ -29,13 +29,13 @@ creds:
   gitToken: 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
   jupyterTokenSting: projectcerebro
   csvPath: csvPath.csv
-  pemPath: cerebro-aif-kp.pem
+  pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
 namespace: cerebro
 cluster:
   name: cerebro-kube-small-1
   kubernetesVersion: 1.26
   workerSpotInstance: false
-  numWorkers: 3
+  numWorkers: 2
   numGPUs: 4
   region: ca-central-1
   controllerInstance: t3.2xlarge
