@@ -42,13 +42,13 @@ cluster:
   workerInstances:
   - g4dn.12xlarge
   volumeSize: 200
-  efsFileSystemId: fs-0b5fdff912aad79c0
+  efsFileSystemId: fs-0cb2d46de07e48d70
   networking:
     nodeLocalListenIP: 169.254.0.0
     prometheusNodePort: 30090
     grafanaNodePort: 30030
     lokiPort: 3100
-    publicDNSName: ec2-35-182-178-181.ca-central-1.compute.amazonaws.com
+    publicDNSName: ec2-15-222-236-155.ca-central-1.compute.amazonaws.com
 worker:
   dataMountPath: /data/cerebro_data_storage
   workerDataPath: /cerebro_data_storage_worker
