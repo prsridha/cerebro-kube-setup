@@ -596,7 +596,7 @@ class CerebroInstaller:
         run(cmd2.format(cluster_name, cluster_region, account_id))
 
         # create kubernetes secret using ssh key and git server as known host
-        kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa --from-file=known_hosts=./init_cluster/known_hosts"
+        kube_git_secret = "kubectl create secret generic git-creds --from-file=ssh=$HOME/.ssh/id_rsa"
         run(kube_git_secret)
         print("Created kubernetes secret for git")
 
