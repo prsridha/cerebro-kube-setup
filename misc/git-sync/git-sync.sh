@@ -5,6 +5,7 @@ mkdir $HOME/.ssh
 cp /etc/git-secret/* $HOME/.ssh/
 mv $HOME/.ssh/ssh $HOME/.ssh/id_rsa.git
 touch $HOME/.ssh/config
+ssh-keyscan -t rsa $GIT_SYNC_SERVER >> ~/.ssh/known_hosts
 
 # create git config file in .ssh
 echo "
@@ -18,9 +19,9 @@ Host $GIT_SYNC_SERVER
 mkdir -p $GIT_SYNC_ROOT
 cd $GIT_SYNC_ROOT
 if [ -z "${GIT_SYNC_BRANCH}" ]; then
-   git clone $GIT_SYNC_REPO
+   git clone $GIT_SYNC_REPO $GIT_SYNC_DIR
 else
-   git clone $GIT_SYNC_REPO -b $GIT_SYNC_BRANCH
+   git clone $GIT_SYNC_REPO -b $GIT_SYNC_BRANCH $GIT_SYNC_DIR
 fi
 
 # check status of git clone command
