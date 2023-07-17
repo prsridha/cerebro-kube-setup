@@ -28,31 +28,31 @@ creds:
   gitServer: github.com
   gitToken: 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
   jupyterTokenSting: projectcerebro
+  csvPath: csvPath.csv
+  pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
 namespace: cerebro
 cluster:
   name: cerebro-kube-small-1
-  workerSpotInstance: true
-  numWorkers: 4
+  kubernetesVersion: 1.26
+  workerSpotInstance: false
+  numWorkers: 2
   numGPUs: 4
   region: ca-central-1
   controllerInstance: t3.2xlarge
   workerInstances:
   - g4dn.12xlarge
   volumeSize: 200
-  efsFileSystemId: fs-09037238b48fb9c1f
-  pemPath: /Users/pradsrid/Mine/Masters/Research/Cerebro/AWSCreds/cerebro-kube-kp.pem
-  containerImageRegistery: 602401143452.dkr.ecr.ap-south-1.amazonaws.com
+  efsFileSystemId: fs-0cb2d46de07e48d70
   networking:
     nodeLocalListenIP: 169.254.0.0
     prometheusNodePort: 30090
     grafanaNodePort: 30030
     lokiPort: 3100
-    publicDNSName: ec2-3-98-58-162.ca-central-1.compute.amazonaws.com
+    publicDNSName: ec2-15-222-236-155.ca-central-1.compute.amazonaws.com
 worker:
   dataMountPath: /data/cerebro_data_storage
   workerDataPath: /cerebro_data_storage_worker
   rpcPort: 7777
-  workerImage: 782408612084.dkr.ecr.ca-central-1.amazonaws.com/cerebro-kube:latest
   workerDataHostPath: /mnt/cerebro_data_storage_worker
 webApp:
   mountPath: /data

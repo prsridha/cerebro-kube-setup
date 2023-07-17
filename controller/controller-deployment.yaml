@@ -4,6 +4,9 @@ kind: Deployment
 metadata:
   name: cerebro-controller
   namespace: {{ .Release.Namespace }}
+  labels:
+        app: cerebro-controller
+        type: cerebro-controller
 spec:
   selector:
     matchLabels:
@@ -37,6 +40,8 @@ spec:
         - name: git-secret
           mountPath: /etc/git-secret
         env:
+        - name: GIT_SYNC_DIR
+          value: cerebro-kube
         - name: GIT_SYNC_REPO
           value: {{ .Values.controller.git.cerebroRepoURL }}
         - name: GIT_SYNC_BRANCH
