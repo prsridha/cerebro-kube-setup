@@ -558,7 +558,7 @@ class CerebroInstaller:
             --query 'Reservations[*].Instances[*].PublicDnsName' \
             --output json
         """.format(cluster_name)
-        public_dns_name = json.loads(run(cmd3))[0]
+        public_dns_name = json.loads(run(cmd3))[0][0]
         self.values_yaml["cluster"]["networking"]["publicDNSName"] = public_dns_name
         with open("values.yaml", "w") as f:
             yaml.safe_dump(self.values_yaml, f)
