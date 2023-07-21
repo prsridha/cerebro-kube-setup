@@ -399,9 +399,9 @@ class CerebroInstaller:
 
         v1.patch_namespaced_service_account("s3-eks-sa", self.kube_namespace, service_account)
         print("Service account annotated with role for S3")
-        time.sleep(5)
 
     def addLocalDNSCache(self):
+        time.sleep(5)
         self.initializeFabric()
         self.s.run("mkdir -p /home/ec2-user/init_cluster")
         self.s.put("init_cluster/local_dns.sh", "/home/ec2-user/init_cluster")
