@@ -813,9 +813,12 @@ class CerebroInstaller:
 
         # wipe Key-Value Store
         keys = ["heartbeat", "kvs_init", "etl_task", "etl_func", "etl_worker_status", "etl_worker_progress"]
+        keys2 = ["mop_spec", "mop_task", "mop_model_on_worker", "mop_model_parallelism_on_worker", "mop_worker_status", "mop_model_mapping", "mop_parallelism_mapping", "mop_sample_time"]
         cmd = "kubectl exec -it redis-master-0 -n key-value-store -- redis-cli -a cerebro DEL {}"
         try:
             for k in keys:
+                run(cmd.format(k))
+            for k in keys2:
                 run(cmd.format(k))
         except Exception as e:
             print("Got error while cleaning up Key-Value Store: " + str(e))
