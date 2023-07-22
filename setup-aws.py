@@ -652,6 +652,7 @@ class CerebroInstaller:
 
         # make configmap of select values.yaml values
         configmap_values = {
+            "cluster_name": self.values_yaml["cluster"]["name"],
             "controller_data_path": self.values_yaml["controller"]["volumes"]["dataMountPath"],
             "worker_rpc_port": self.values_yaml["worker"]["rpcPort"],
             "user_repo_path": self.values_yaml["controller"]["volumes"]["userRepoMountPath"],
