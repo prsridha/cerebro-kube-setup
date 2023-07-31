@@ -35,25 +35,26 @@ cluster:
   name: cerebro-kube-small-1
   kubernetesVersion: 1.26
   workerSpotInstance: false
-  numWorkers: 2
+  numWorkers: 3
   numGPUs: 4
   region: ca-central-1
   controllerInstance: t3.2xlarge
   workerInstances:
   - g4dn.12xlarge
   volumeSize: 200
-  efsFileSystemId: fs-0cb2d46de07e48d70
+  efsFileSystemId: fs-0ccbfc6dbab19a7ed
   networking:
     nodeLocalListenIP: 169.254.0.0
     prometheusNodePort: 30090
     grafanaNodePort: 30030
     lokiPort: 3100
-    publicDNSName: ec2-15-222-236-155.ca-central-1.compute.amazonaws.com
+    publicDNSName: ec2-15-223-121-55.ca-central-1.compute.amazonaws.com
 worker:
   dataMountPath: /data/cerebro_data_storage
   workerDataPath: /cerebro_data_storage_worker
   rpcPort: 7777
   workerDataHostPath: /mnt/cerebro_data_storage_worker
+  shardMultiplicity: 4
 webApp:
   mountPath: /data
   backendPort: 8083

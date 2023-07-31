@@ -663,7 +663,8 @@ class CerebroInstaller:
             "tensorboard_node_port": self.values_yaml["controller"]["services"]["tensorboardNodePort"],
             "grafana_node_port": self.values_yaml["cluster"]["networking"]["grafanaNodePort"],
             "prometheus_node_port": self.values_yaml["cluster"]["networking"]["prometheusNodePort"],
-            "loki_port": self.values_yaml["cluster"]["networking"]["lokiPort"]
+            "loki_port": self.values_yaml["cluster"]["networking"]["lokiPort"],
+            "shard_multiplicity": self.values_yaml["worker"]["shardMultiplicity"]
         }
 
         # create cerebro info configmap
