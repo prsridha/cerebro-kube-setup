@@ -1021,6 +1021,70 @@ class CerebroInstaller:
 
         print("Cluster delete complete")
 
+    def pauseCluster(self):
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+
+        # cleanUp cluster
+        print("Clearing Cerebro resources...")
+        self.cleanUp()
+
+        # scale down cluster to 0 nodes
+        print("Scaling down cluster...")
+        cluster_name = self.values_yaml["cluster"]["name"]
+        cmd1 = "eksctl scale nodegroup --cluster {} --name ng-controller --nodes 0 --nodes-max 1 --nodes-min 0"
+        cmd2 = "eksctl scale nodegroup --cluster {} --name ng-worker --nodes 0 --nodes-max 1 --nodes-min 0"
+        run(cmd1.format(cluster_name), capture_output=False, haltException=False)
+        run(cmd2.format(cluster_name), capture_output=False, haltException=False)
+
+        # wait for desired number of nodes
+        current_nodes = None
+        while current_nodes != 0:
+            nodes_list = v1.list_node().items
+            current_nodes = len(nodes_list)
+            time.sleep(1)
+
+        print("Cluster paused!")
+
+    def resumeCluster(self):
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+
+        # scale up cluster to num_nodes
+        print("Scaling up cluster...")
+        cluster_name = self.values_yaml["cluster"]["name"]
+        num_nodes = self.values_yaml["cluster"]["numWorkers"]
+        cmd1 = "eksctl scale nodegroup --cluster {0} --name ng-controller --nodes 1 --nodes-max 1 --nodes-min 0"
+        cmd2 = "eksctl scale nodegroup --cluster {0} --name ng-worker --nodes {1} --nodes-max {1} --nodes-min 0"
+        run(cmd1.format(cluster_name), capture_output=False, haltException=False)
+        run(cmd2.format(cluster_name, num_nodes), capture_output=False, haltException=False)
+
+        # wait for desired num_nodes
+        current_nodes = 0
+        while current_nodes != num_nodes + 1:
+            nodes_list = v1.list_node().items
+            current_nodes = len(nodes_list)
+            time.sleep(1)
+
+        # install Cerebro
+        print("Creating Cerebro objects...")
+        # self.installCerebro()
+
+        # load fabric connections
+        self.initializeFabric()
+
+        cmds = [
+            "iptables -P INPUT ACCEPT",
+            "iptables -P FORWARD ACCEPT",
+            "iptables -P OUTPUT ACCEPT",
+            "iptables -F"
+        ]
+        for cmd in cmds:
+            self.conn.sudo(cmd)
+            self.s.sudo(cmd)
+
+        print("Cluster resumed!")
+
     def testing(self):
         pass
 
