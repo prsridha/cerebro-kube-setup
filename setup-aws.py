@@ -1033,8 +1033,8 @@ class CerebroInstaller:
         # scale down cluster to 0 nodes
         print("Scaling down cluster...")
         cluster_name = self.values_yaml["cluster"]["name"]
-        cmd1 = "eksctl scale nodegroup --cluster {} --name ng-controller --nodes 0 --nodes-max 1 --nodes-min 0"
-        cmd2 = "eksctl scale nodegroup --cluster {} --name ng-worker --nodes 0 --nodes-max 1 --nodes-min 0"
+        cmd1 = "eksctl scale nodegroup --cluster {} --name ng-worker --nodes 0 --nodes-max 1 --nodes-min 0 --wait"
+        cmd2 = "eksctl scale nodegroup --cluster {} --name ng-controller --nodes 0 --nodes-max 1 --nodes-min 0 --wait"
         run(cmd1.format(cluster_name), capture_output=False, haltException=False)
         run(cmd2.format(cluster_name), capture_output=False, haltException=False)
 
@@ -1055,8 +1055,8 @@ class CerebroInstaller:
         print("Scaling up cluster...")
         cluster_name = self.values_yaml["cluster"]["name"]
         num_nodes = self.values_yaml["cluster"]["numWorkers"]
-        cmd1 = "eksctl scale nodegroup --cluster {0} --name ng-controller --nodes 1 --nodes-max 1 --nodes-min 0"
-        cmd2 = "eksctl scale nodegroup --cluster {0} --name ng-worker --nodes {1} --nodes-max {1} --nodes-min 0"
+        cmd1 = "eksctl scale nodegroup --cluster {0} --name ng-controller --nodes 1 --nodes-max 1 --nodes-min 0 --wait"
+        cmd2 = "eksctl scale nodegroup --cluster {0} --name ng-worker --nodes {1} --nodes-max {1} --nodes-min 0 --wait"
         run(cmd1.format(cluster_name), capture_output=False, haltException=False)
         run(cmd2.format(cluster_name, num_nodes), capture_output=False, haltException=False)
 
@@ -1074,15 +1074,15 @@ class CerebroInstaller:
         # load fabric connections
         self.initializeFabric()
 
-        cmds = [
-            "iptables -P INPUT ACCEPT",
-            "iptables -P FORWARD ACCEPT",
-            "iptables -P OUTPUT ACCEPT",
-            "iptables -F"
-        ]
-        for cmd in cmds:
-            self.conn.sudo(cmd)
-            self.s.sudo(cmd)
+        # cmds = [
+        #     "iptables -P INPUT ACCEPT",
+        #     "iptables -P FORWARD ACCEPT",
+        #     "iptables -P OUTPUT ACCEPT",
+        #     "iptables -F"
+        # ]
+        # for cmd in cmds:
+        #     self.conn.sudo(cmd)
+        #     self.s.sudo(cmd)
 
         print("Cluster resumed!")
 
