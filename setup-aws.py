@@ -665,7 +665,8 @@ class CerebroInstaller:
             "prometheus_node_port": self.values_yaml["cluster"]["networking"]["prometheusNodePort"],
             "loki_port": self.values_yaml["cluster"]["networking"]["lokiPort"],
             "shard_multiplicity": self.values_yaml["worker"]["shardMultiplicity"],
-            "sample_size": self.values_yaml["worker"]["sampleSize"]
+            "sample_size": self.values_yaml["worker"]["sampleSize"],
+            "metrics_cycle_size": self.values_yaml["worker"]["metricsCycle"],
         }
 
         # create cerebro info configmap
