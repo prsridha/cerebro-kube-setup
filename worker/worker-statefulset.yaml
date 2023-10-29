@@ -21,6 +21,7 @@ spec:
         statefulset.kubernetes.io/pod-name: cerebro-worker-$(POD_INDEX)
     spec:
       hostname: cerebro-worker-$(POD_INDEX)
+      terminationGracePeriodSeconds: 5
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -33,31 +34,28 @@ spec:
                 - cerebro-worker
             topologyKey: "kubernetes.io/hostname"
       serviceAccountName: s3-eks-sa
-      initContainers:
-        - name: etl-container
-          image: {{ .Values.controller.git.image }}
-          imagePullPolicy: Always
-          command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
-          workingDir: /cerebro-repo/cerebro-kube
-          env:
+      containers:
+      - name: etl-container
+        image: {{ .Values.controller.git.image }}
+        imagePullPolicy: Always
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh" ]
+        workingDir: /cerebro-repo/cerebro-kube
+        env:
           - name: WORKER_ID_SELF
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
           - name: POD_TYPE
             value: "etl"
-          volumeMounts:
-          - name: cerebro-repo
-            mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
-          - name: user-repo
-            mountPath: {{ .Values.controller.volumes.userRepoMountPath }}
-          - name: cerebro-data-storage-worker
-            mountPath: {{ .Values.worker.workerDataPath }}
-          - name: cerebro-controller-storage
-            mountPath: {{ .Values.controller.volumes.dataMountPath }}
-          ports:
-          - containerPort: {{ .Values.worker.rpcPort }}
-      containers:
+        volumeMounts:
+        - name: cerebro-repo
+          mountPath: {{ .Values.controller.volumes.cerebroRepoMountPath }}
+        - name: user-repo
+          mountPath: {{ .Values.controller.volumes.userRepoMountPath }}
+        - name: cerebro-data-storage-worker
+          mountPath: {{ .Values.worker.workerDataPath }}
+        - name: cerebro-controller-storage
+          mountPath: {{ .Values.controller.volumes.dataMountPath }}
       - name: mop-container
         image: {{ .Values.controller.git.image }}
         imagePullPolicy: Always
@@ -66,6 +64,8 @@ spec:
         resources:
           limits:
             nvidia.com/gpu: {{ .Values.cluster.numGPUs }}
+        ports:
+          - containerPort: {{ .Values.worker.rpcPort }}
         env:
         - name: WORKER_ID_SELF
           valueFrom:
