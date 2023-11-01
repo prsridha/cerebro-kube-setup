@@ -55,7 +55,7 @@ spec:
       - name: cerebro-backend-container
         image: {{ .Values.controller.git.image }}
         imagePullPolicy: Always
-        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/backend/run_backend.sh"]
         workingDir: /cerebro-repo/cerebro-kube/backend
         env:
         - name: POD_TYPE

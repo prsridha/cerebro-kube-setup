@@ -38,7 +38,7 @@ spec:
       - name: etl-container
         image: {{ .Values.controller.git.image }}
         imagePullPolicy: Always
-        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh" ]
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/etl/run_etl.sh" ]
         workingDir: /cerebro-repo/cerebro-kube
         env:
           - name: WORKER_ID_SELF
@@ -59,7 +59,7 @@ spec:
       - name: mop-container
         image: {{ .Values.controller.git.image }}
         imagePullPolicy: Always
-        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/init.sh"]
+        command: [ "/bin/bash", "/cerebro-repo/cerebro-kube/mop/run_mop.sh"]
         workingDir: /cerebro-repo/cerebro-kube
         resources:
           limits:
